@@ -6,26 +6,7 @@ warnings.filterwarnings('ignore')
 
 def extract_features(audio_path):
     try:
-        # Fix for Windows MP3 loading issue — convert to WAV first
-        load_path = audio_path
-        wav_path = None
-
-        if audio_path.endswith('.mp3') or audio_path.endswith('.m4a'):
-            try:
-                from pydub import AudioSegment
-                wav_path = audio_path + "_converted.wav"
-                audio = AudioSegment.from_file(audio_path)
-                audio.export(wav_path, format='wav')
-                load_path = wav_path
-            except Exception:
-                load_path = audio_path  # fallback
-
-        y, sr = librosa.load(load_path, duration=30, sr=22050)
-
-        # Cleanup converted file
-        if wav_path and os.path.exists(wav_path):
-            try: os.unlink(wav_path)
-            except: pass
+        y, sr = librosa.load(audio_path, duration=30, sr=22050)
 
         if len(y) < sr * 0.5:
             return None, None, None
@@ -64,7 +45,6 @@ def extract_features(audio_path):
 
     except Exception as e:
         return None, None, None
-
 
 def rule_based_voice_checks(y, sr):
     findings = []

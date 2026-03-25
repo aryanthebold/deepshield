@@ -140,10 +140,10 @@ with tab3:
     st.info("Supports MP3, WAV, M4A — minimum 3 seconds of audio")
 
     uploaded_audio = st.file_uploader(
-        "Choose an audio file...",
-        type=["mp3", "wav", "m4a", "ogg", "flac"],
-        key="audio_upload"
-    )
+    "Choose an audio file...",
+    type=["wav", "mp3", "m4a", "ogg", "flac"],
+    key="audio_upload"
+)
 
     if uploaded_audio is not None:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
