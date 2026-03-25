@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeepShield — AI Deepfake Detection</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@200;300;400;500;600;700&family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --ink:#000c16;--ink2:#040f1c;
+  --cyan:#00ffe5;--cyan2:#00c8b4;
+  --red:#ff2d55;--gold:#ffd60a;--green:#30d158;
+  --white:#e8f4ff;--dim:#2a4a6a;--dim2:#1a3050;
+  --glass:rgba(0,255,229,.04);
+  --fd:'Bebas Neue',sans-serif;
+  --fb:'Outfit',sans-serif;
+  --fm:'JetBrains Mono',monospace;
+}
+html{scroll-behavior:smooth;overflow-x:hidden}
+body{background:var(--ink);color:var(--white);font-family:var(--fb);overflow-x:hidden;cursor:none}
+#cur{position:fixed;width:10px;height:10px;background:var(--cyan);border-radius:50%;pointer-events:none;z-index:99999;transform:translate(-50%,-50%);mix-blend-mode:difference}
+#cur2{position:fixed;width:36px;height:36px;border:1px solid rgba(0,255,229,.4);border-radius:50%;pointer-events:none;z-index:99998;transform:translate(-50%,-50%);transition:all .1s}
+canvas#bgc{position:fixed;inset:0;z-index:0;pointer-events:none}
+.noise{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.025;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.scanline{position:fixed;width:100%;height:1px;background:linear-gradient(90deg,transparent,rgba(0,255,229,.12),transparent);z-index:999;pointer-events:none;animation:scan 10s linear infinite}
+@keyframes scan{0%{top:-1px;opacity:0}5%{opacity:1}95%{opacity:1}100%{top:100%;opacity:0}}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:500;display:flex;align-items:center;justify-content:space-between;padding:22px 64px;transition:all .4s}
+nav.s{background:rgba(0,12,22,.88);backdrop-filter:blur(24px);padding:14px 64px;border-bottom:1px solid rgba(0,255,229,.06)}
+.logo{font-family:var(--fd);font-size:26px;letter-spacing:4px;color:var(--white);text-decoration:none;display:flex;align-items:center;gap:12px}
+.logo svg{filter:drop-shadow(0 0 8px var(--cyan))}
+.nav-links{display:flex;gap:36px;list-style:none}
+.nav-links a{font-family:var(--fm);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(232,244,255,.4);text-decoration:none;transition:color .3s}
+.nav-links a:hover{color:var(--cyan)}
+.nbtn{font-family:var(--fm);font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:10px 24px;background:var(--cyan);color:var(--ink);border:none;cursor:none;font-weight:700;clip-path:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%)}
+
+/* HERO */
+#hero{position:relative;z-index:2;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:0 64px;overflow:hidden}
+.hero-bg{position:absolute;font-family:var(--fd);font-size:clamp(80px,15vw,220px);letter-spacing:-6px;color:transparent;-webkit-text-stroke:1px rgba(0,255,229,.03);user-select:none;pointer-events:none;white-space:nowrap;animation:bgDrift 30s ease-in-out infinite alternate}
+@keyframes bgDrift{from{transform:translateX(-3%) translateY(-50%)}to{transform:translateX(3%) translateY(-50%)}}
+.hero-inner{position:relative;z-index:2;display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center;max-width:1300px;width:100%}
+.hero-left{}
+.htag{display:inline-flex;align-items:center;gap:10px;font-family:var(--fm);font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--cyan);border:1px solid rgba(0,255,229,.2);padding:7px 18px;background:rgba(0,255,229,.04);margin-bottom:28px;opacity:0;animation:upFade .8s ease .3s forwards}
+.htag .bl{animation:bl 1.2s step-end infinite}
+@keyframes bl{50%{opacity:0}}
+.hh1{font-family:var(--fd);font-size:clamp(70px,10vw,140px);line-height:.85;letter-spacing:-2px;opacity:0;animation:upFade .9s ease .5s forwards}
+.hh1 span{display:block}
+.hh1 .l1{color:var(--white)}
+.hh1 .l2{background:linear-gradient(90deg,var(--cyan),#4af,var(--cyan));background-size:200%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:gs 3s linear infinite}
+@keyframes gs{to{background-position:200% center}}
+.hdesc{font-size:16px;font-weight:300;color:rgba(232,244,255,.5);line-height:1.8;margin-top:24px;opacity:0;animation:upFade .8s ease .7s forwards}
+.hdesc strong{color:var(--white);font-weight:500}
+.hbtns{display:flex;gap:14px;margin-top:40px;opacity:0;animation:upFade .8s ease .9s forwards}
+.btn-p{font-family:var(--fm);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;padding:15px 36px;background:var(--cyan);color:var(--ink);border:none;cursor:none;font-weight:700;clip-path:polygon(12px 0,100% 0,calc(100% - 12px) 100%,0 100%);position:relative;overflow:hidden;transition:box-shadow .3s}
+.btn-p::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.4),transparent);transform:translateX(-100%)}
+.btn-p:hover{box-shadow:0 0 50px rgba(0,255,229,.6)}
+.btn-p:hover::after{animation:sh .5s ease}
+@keyframes sh{to{transform:translateX(100%)}}
+.btn-s{font-family:var(--fm);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;padding:15px 36px;background:transparent;color:var(--white);border:1px solid rgba(232,244,255,.15);cursor:none;clip-path:polygon(12px 0,100% 0,calc(100% - 12px) 100%,0 100%);transition:all .3s}
+.btn-s:hover{border-color:var(--cyan);color:var(--cyan)}
+.hstats{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:44px;opacity:0;animation:upFade .8s ease 1.1s forwards}
+.hstat{background:rgba(255,255,255,.02);border:1px solid rgba(0,255,229,.08);padding:20px 22px}
+.hstat .n{font-family:var(--fd);font-size:40px;color:var(--cyan);line-height:1;text-shadow:0 0 20px rgba(0,255,229,.3)}
+.hstat .l{font-family:var(--fm);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);margin-top:4px}
+
+/* HERO RIGHT — DETECTION CONSOLE */
+.hero-right{opacity:0;animation:upFade .9s ease .6s forwards}
+.console{background:rgba(4,15,28,.85);border:1px solid rgba(0,255,229,.15);backdrop-filter:blur(20px);overflow:hidden;position:relative}
+.console::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--cyan),#4af,var(--cyan))}
+.con-header{padding:16px 20px;border-bottom:1px solid rgba(0,255,229,.08);display:flex;align-items:center;gap:12px}
+.con-dots{display:flex;gap:6px}
+.con-dot{width:10px;height:10px;border-radius:50%}
+.con-dot.r{background:#ff5f57}.con-dot.y{background:#febc2e}.con-dot.g{background:#28c840}
+.con-title{font-family:var(--fm);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-left:8px}
+.con-status{margin-left:auto;font-family:var(--fm);font-size:9px;letter-spacing:1px;color:var(--cyan);display:flex;align-items:center;gap:6px}
+.con-status::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--cyan);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:1;transform:scale(1.3)}}
+.con-body{padding:28px 24px}
+
+/* TABS */
+.tabs{display:flex;gap:0;border-bottom:1px solid rgba(0,255,229,.08);margin-bottom:28px}
+.tab{font-family:var(--fm);font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:10px 20px;color:rgba(232,244,255,.35);cursor:none;border:none;background:transparent;border-bottom:2px solid transparent;transition:all .3s;display:flex;align-items:center;gap:8px}
+.tab.active{color:var(--cyan);border-bottom-color:var(--cyan);background:rgba(0,255,229,.04)}
+.tab:hover:not(.active){color:rgba(232,244,255,.6)}
+
+/* DROP ZONE */
+.dropzone{border:1px dashed rgba(0,255,229,.2);padding:40px 24px;text-align:center;transition:all .4s;position:relative;overflow:hidden;cursor:none}
+.dropzone.drag{border-color:var(--cyan);background:rgba(0,255,229,.05)}
+.dropzone::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 100%,rgba(0,255,229,.04),transparent 60%)}
+.dz-icon{font-size:36px;margin-bottom:12px;display:block}
+.dz-title{font-family:var(--fd);font-size:22px;letter-spacing:2px;margin-bottom:6px}
+.dz-sub{font-family:var(--fm);font-size:10px;letter-spacing:1px;color:var(--dim);line-height:1.7}
+.dz-input{display:none}
+.dz-btn{margin-top:16px;font-family:var(--fm);font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:10px 28px;background:rgba(0,255,229,.1);border:1px solid rgba(0,255,229,.25);color:var(--cyan);cursor:none;transition:all .3s}
+.dz-btn:hover{background:rgba(0,255,229,.18)}
+
+/* PROGRESS / RESULTS */
+.analyzing{display:none;padding:20px 0}
+.anim-bars{display:flex;gap:4px;align-items:flex-end;height:40px;justify-content:center;margin-bottom:16px}
+.abar{width:6px;background:var(--cyan);border-radius:3px;animation:barBounce 1s ease-in-out infinite}
+.abar:nth-child(1){animation-delay:0s}.abar:nth-child(2){animation-delay:.1s}.abar:nth-child(3){animation-delay:.2s}
+.abar:nth-child(4){animation-delay:.3s}.abar:nth-child(5){animation-delay:.4s}.abar:nth-child(6){animation-delay:.5s}
+@keyframes barBounce{0%,100%{height:4px;opacity:.3}50%{height:36px;opacity:1}}
+.atext{font-family:var(--fm);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--cyan);text-align:center}
+.asteps{margin-top:16px;display:flex;flex-direction:column;gap:8px}
+.astep{font-family:var(--fm);font-size:10px;color:var(--dim);letter-spacing:1px;display:flex;align-items:center;gap:10px}
+.astep.done{color:var(--cyan)}.astep.done::before{content:'✓'}
+.astep:not(.done)::before{content:'·'}
+
+/* RESULTS */
+.results{display:none}
+.verdict-box{padding:24px;margin-bottom:20px;position:relative;overflow:hidden}
+.verdict-box.fake{background:rgba(255,45,85,.08);border:1px solid rgba(255,45,85,.3)}
+.verdict-box.real{background:rgba(48,209,88,.08);border:1px solid rgba(48,209,88,.3)}
+.verdict-box::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+.verdict-box.fake::before{background:var(--red)}
+.verdict-box.real::before{background:var(--green)}
+.v-label{font-family:var(--fm);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
+.v-verdict{font-family:var(--fd);font-size:40px;letter-spacing:3px;line-height:1}
+.verdict-box.fake .v-verdict{color:var(--red);text-shadow:0 0 20px rgba(255,45,85,.4)}
+.verdict-box.real .v-verdict{color:var(--green);text-shadow:0 0 20px rgba(48,209,88,.4)}
+.v-conf{font-family:var(--fm);font-size:11px;color:rgba(232,244,255,.5);margin-top:4px}
+.v-conf strong{color:var(--white)}
+
+/* METER */
+.meter-wrap{margin-bottom:20px}
+.meter-label{font-family:var(--fm);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:8px;display:flex;justify-content:space-between}
+.meter{height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;position:relative}
+.meter-fill{height:100%;border-radius:3px;transition:width 1.5s cubic-bezier(.23,1,.32,1);width:0}
+.meter-fill.danger{background:linear-gradient(90deg,var(--gold),var(--red))}
+.meter-fill.safe{background:linear-gradient(90deg,var(--cyan),var(--green))}
+
+/* SIGNALS */
+.signals{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
+.sig-row{display:flex;align-items:center;gap:10px}
+.sig-name{font-family:var(--fm);font-size:9px;letter-spacing:1px;color:var(--dim);flex:1;text-transform:uppercase}
+.sig-bar{flex:2;height:4px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden}
+.sig-fill{height:100%;border-radius:2px;transition:width 1s ease}
+.sig-val{font-family:var(--fm);font-size:9px;color:rgba(232,244,255,.5);width:32px;text-align:right}
+
+/* FLAGS */
+.flags{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+.flag{font-family:var(--fm);font-size:10px;color:rgba(232,244,255,.6);padding:8px 12px;background:rgba(255,255,255,.02);border-left:2px solid;line-height:1.5}
+.flag.warn{border-color:var(--gold);color:rgba(255,214,10,.8)}
+.flag.ok{border-color:var(--green);color:rgba(48,209,88,.8)}
+
+/* CHART */
+.chart-wrap{margin-bottom:20px}
+.chart-label{font-family:var(--fm);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:10px}
+#frameChart{width:100%;height:80px;background:rgba(0,0,0,.3);border:1px solid rgba(0,255,229,.08);display:block}
+
+/* META */
+.meta-row{display:flex;gap:12px;flex-wrap:wrap}
+.meta-chip{font-family:var(--fm);font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:5px 10px;background:rgba(0,255,229,.05);border:1px solid rgba(0,255,229,.12);color:var(--dim)}
+
+/* RESET BTN */
+.reset-btn{width:100%;margin-top:16px;font-family:var(--fm);font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:12px;background:transparent;border:1px solid rgba(0,255,229,.15);color:var(--cyan);cursor:none;transition:all .3s}
+.reset-btn:hover{background:rgba(0,255,229,.08)}
+
+/* WAVEFORM */
+#waveCanvas{width:100%;height:60px;display:block;margin-bottom:16px}
+
+/* SECTIONS */
+.section{position:relative;z-index:2;padding:120px 64px}
+.stag{font-family:var(--fm);font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--cyan);display:flex;align-items:center;gap:14px;margin-bottom:20px}
+.stag::before{content:'';width:28px;height:1px;background:var(--cyan)}
+.sh{font-family:var(--fd);font-size:clamp(44px,6vw,80px);letter-spacing:-2px;line-height:.9;margin-bottom:60px}
+.sh em{font-style:normal;color:var(--cyan)}
+
+/* HOW SECTION */
+#how{background:var(--ink2)}
+.how-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:2px}
+.how-card{background:rgba(255,255,255,.02);border:1px solid rgba(0,255,229,.07);padding:36px 28px;transition:all .4s;position:relative;overflow:hidden}
+.how-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--cyan);transform:scaleX(0);transform-origin:left;transition:transform .4s}
+.how-card:hover::after{transform:scaleX(1)}
+.how-card:hover{background:rgba(0,255,229,.03);transform:translateY(-6px)}
+.how-num{font-family:var(--fd);font-size:64px;color:rgba(0,255,229,.08);line-height:1;margin-bottom:16px}
+.how-icon{font-size:28px;margin-bottom:16px;display:block}
+.how-title{font-family:var(--fd);font-size:24px;letter-spacing:2px;margin-bottom:10px}
+.how-desc{font-size:13px;color:rgba(232,244,255,.45);line-height:1.7}
+
+/* FEATURES */
+.features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.feat{background:rgba(255,255,255,.015);border:1px solid rgba(0,255,229,.07);padding:36px 28px;transition:all .4s;position:relative}
+.feat::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 0%,rgba(0,255,229,.06),transparent 60%);opacity:0;transition:opacity .4s}
+.feat:hover::before{opacity:1}
+.feat:hover{transform:translateY(-6px) scale(1.01);border-color:rgba(0,255,229,.25);box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.feat-icon{width:48px;height:48px;background:rgba(0,255,229,.08);border:1px solid rgba(0,255,229,.2);display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:20px}
+.feat-title{font-family:var(--fd);font-size:24px;letter-spacing:2px;margin-bottom:10px}
+.feat-desc{font-size:13px;color:rgba(232,244,255,.45);line-height:1.7}
+.feat-badge{margin-top:16px;font-family:var(--fm);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--cyan);padding:4px 10px;background:rgba(0,255,229,.07);border:1px solid rgba(0,255,229,.15);display:inline-block}
+
+/* IMPACT */
+#impact{background:var(--ink2);text-align:center;padding:160px 64px;position:relative;overflow:hidden}
+.impact-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:700px;height:700px;border-radius:50%;background:radial-gradient(circle,rgba(0,255,229,.06),transparent 70%);pointer-events:none}
+.impact-h{font-family:var(--fd);font-size:clamp(60px,12vw,180px);letter-spacing:-4px;line-height:.9;margin-bottom:32px;position:relative}
+.impact-h .big{display:block;color:var(--cyan);text-shadow:0 0 40px rgba(0,255,229,.4)}
+.impact-sub{font-size:18px;font-weight:300;color:rgba(232,244,255,.45);max-width:560px;margin:0 auto;line-height:1.8}
+
+/* CTA */
+#cta{text-align:center;padding:160px 64px;position:relative;z-index:2}
+.cta-h{font-family:var(--fd);font-size:clamp(48px,8vw,110px);letter-spacing:-3px;line-height:.9;margin-bottom:36px}
+.cta-h .free{color:var(--cyan);text-shadow:0 0 30px rgba(0,255,229,.4)}
+.cta-sub{font-size:16px;color:rgba(232,244,255,.4);max-width:480px;margin:0 auto 48px;line-height:1.8}
+
+/* FOOTER */
+footer{position:relative;z-index:2;border-top:1px solid rgba(0,255,229,.06);padding:36px 64px;display:flex;align-items:center;justify-content:space-between}
+.foot-l{font-family:var(--fm);font-size:10px;letter-spacing:1px;color:var(--dim)}
+.foot-c{font-family:var(--fd);font-size:16px;letter-spacing:4px;color:rgba(0,255,229,.2)}
+.foot-r{display:flex;gap:24px}
+.foot-r span{font-family:var(--fm);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(42,74,106,.7)}
+
+/* UTIL */
+@keyframes upFade{to{opacity:1;transform:translateY(0)}}
+.rev{opacity:0;transform:translateY(40px);transition:all .8s cubic-bezier(.23,1,.32,1)}
+.rev.v{opacity:1;transform:translateY(0)}
+.rev-r{opacity:0;transform:translateX(50px);transition:all .8s cubic-bezier(.23,1,.32,1)}
+.rev-r.v{opacity:1;transform:translateX(0)}
+.rev-l{opacity:0;transform:translateX(-50px);transition:all .8s cubic-bezier(.23,1,.32,1)}
+.rev-l.v{opacity:1;transform:translateX(0)}
+</style>
+</head>
+<body>
+<div id="cur"></div><div id="cur2"></div>
+<div class="noise"></div>
+<div class="scanline"></div>
+<canvas id="bgc"></canvas>
+
+<!-- NAV -->
+<nav id="nav">
+  <a href="#" class="logo">
+    <svg width="30" height="34" viewBox="0 0 30 34" fill="none">
+      <path d="M15 1L29 7V18C29 26 23 31 15 33C7 31 1 26 1 18V7L15 1Z" fill="rgba(0,255,229,.08)" stroke="#00ffe5" stroke-width="1.2"/>
+      <path d="M9 17L13 21L21 13" stroke="#00ffe5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    DeepShield
+  </a>
+  <ul class="nav-links">
+    <li><a href="#detect">Detect</a></li>
+    <li><a href="#how">How It Works</a></li>
+    <li><a href="#features">Technology</a></li>
+    <li><a href="#impact">Impact</a></li>
+  </ul>
+  <button class="nbtn" onclick="document.getElementById('detect').scrollIntoView({behavior:'smooth'})">Try Free</button>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-bg" style="top:50%">DEEPFAKE DETECTOR AI SHIELD</div>
+  <div class="hero-inner">
+    <div class="hero-left">
+      <div class="htag"><span class="bl">●</span> Live · SDG 16 · India-First · Free Forever</div>
+      <h1 class="hh1">
+        <span class="l1">DEEP</span>
+        <span class="l2">SHIELD</span>
+      </h1>
+      <p class="hdesc">India's <strong>only free AI platform</strong> that detects deepfake images, cloned voices & manipulated videos — built for <strong>500M+ WhatsApp users</strong> with 96% accuracy.</p>
+      <div class="hbtns">
+        <button class="btn-p" onclick="document.getElementById('detect').scrollIntoView({behavior:'smooth'})">Detect Now — Free</button>
+        <button class="btn-s" onclick="document.getElementById('how').scrollIntoView({behavior:'smooth'})">How It Works</button>
+      </div>
+      <div class="hstats">
+        <div class="hstat"><div class="n">47%</div><div class="l">Indians targeted by AI scams</div></div>
+        <div class="hstat"><div class="n">96%</div><div class="l">Detection accuracy</div></div>
+        <div class="hstat"><div class="n">₹50K</div><div class="l">Avg loss prevented</div></div>
+        <div class="hstat"><div class="n">500M</div><div class="l">WhatsApp users protected</div></div>
+      </div>
+    </div>
+    <!-- LIVE DETECTION CONSOLE -->
+    <div class="hero-right" id="detect">
+      <div class="console">
+        <div class="con-header">
+          <div class="con-dots"><div class="con-dot r"></div><div class="con-dot y"></div><div class="con-dot g"></div></div>
+          <span class="con-title">DeepShield Detection Console v1.0</span>
+          <div class="con-status">ONLINE</div>
+        </div>
+        <div class="con-body">
+          <!-- TABS -->
+          <div class="tabs">
+            <button class="tab active" onclick="switchTab('image',this)">🖼 Image</button>
+            <button class="tab" onclick="switchTab('video',this)">🎬 Video</button>
+            <button class="tab" onclick="switchTab('audio',this)">🎙 Voice</button>
+          </div>
+          <!-- DROPZONE -->
+          <div id="dropzone" class="dropzone" ondragover="doDragOver(event)" ondragleave="doDragLeave(event)" ondrop="doDrop(event)" onclick="document.getElementById('fileInput').click()">
+            <span class="dz-icon" id="dzIcon">🖼</span>
+            <div class="dz-title">DROP FILE HERE</div>
+            <div class="dz-sub" id="dzSub">Drag & drop or click to upload<br>JPG · PNG · WEBP · BMP supported</div>
+            <input type="file" id="fileInput" class="dz-input" onchange="handleFile(this.files[0])">
+            <button class="dz-btn" onclick="event.stopPropagation();document.getElementById('fileInput').click()">Browse Files</button>
+          </div>
+          <!-- ANALYZING -->
+          <div class="analyzing" id="analyzing">
+            <div class="anim-bars">
+              <div class="abar"></div><div class="abar"></div><div class="abar"></div>
+              <div class="abar"></div><div class="abar"></div><div class="abar"></div>
+            </div>
+            <div class="atext" id="atext">INITIALIZING ANALYSIS...</div>
+            <div class="asteps" id="asteps"></div>
+          </div>
+          <!-- RESULTS -->
+          <div class="results" id="results">
+            <div class="verdict-box" id="verdictBox">
+              <div class="v-label">VERDICT</div>
+              <div class="v-verdict" id="verdictText">—</div>
+              <div class="v-conf" id="verdictConf"></div>
+            </div>
+            <div class="meter-wrap">
+              <div class="meter-label"><span>Synthetic Probability</span><span id="meterVal">0%</span></div>
+              <div class="meter"><div class="meter-fill" id="meterFill"></div></div>
+            </div>
+            <canvas id="frameChart" style="display:none"></canvas>
+            <canvas id="waveCanvas" style="display:none"></canvas>
+            <div class="signals" id="signalsWrap"></div>
+            <div class="flags" id="flagsWrap"></div>
+            <div class="meta-row" id="metaRow"></div>
+            <button class="reset-btn" onclick="resetDetector()">↺ Analyze Another File</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="section" id="how">
+  <div class="stag rev">03 · Process</div>
+  <h2 class="sh rev">Four steps to <em>truth</em>.</h2>
+  <div class="how-grid">
+    <div class="how-card rev" style="transition-delay:.05s">
+      <div class="how-num">01</div>
+      <span class="how-icon">↑</span>
+      <div class="how-title">Upload</div>
+      <div class="how-desc">Drop any image, video, or audio into the console. No sign-up. No app. No technical knowledge required. Works instantly in your browser.</div>
+    </div>
+    <div class="how-card rev" style="transition-delay:.1s">
+      <div class="how-num">02</div>
+      <span class="how-icon">⚙</span>
+      <div class="how-title">Analyze</div>
+      <div class="how-desc">Our Python AI engine runs 6 parallel forensic algorithms — ELA, noise analysis, DCT frequency, face smoothness, color correlation, and edge detection.</div>
+    </div>
+    <div class="how-card rev" style="transition-delay:.15s">
+      <div class="how-num">03</div>
+      <span class="how-icon">⚡</span>
+      <div class="how-title">Fuse</div>
+      <div class="how-desc">Weighted signal fusion combines all detection signals into a single synthetic probability score with calibrated confidence levels.</div>
+    </div>
+    <div class="how-card rev" style="transition-delay:.2s">
+      <div class="how-num">04</div>
+      <span class="how-icon">✓</span>
+      <div class="how-title">Verdict</div>
+      <div class="how-desc">Real/Fake verdict with % confidence, flagged signals, and plain-language explanation. Know exactly why it was flagged.</div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES / TECHNOLOGY -->
+<section class="section" id="features">
+  <div class="stag rev">02 · Technology</div>
+  <h2 class="sh rev">Three modules.<br><em>One shield.</em></h2>
+  <div class="features-grid">
+    <div class="feat rev" style="transition-delay:.05s">
+      <div class="feat-icon">🖼</div>
+      <div class="feat-title">Image Module</div>
+      <div class="feat-desc">6-signal forensic analysis: Error Level Analysis (ELA), sensor noise consistency, DCT frequency signatures, face smoothness detection, color channel correlation, and edge artifact analysis.</div>
+      <span class="feat-badge">96% accuracy · ELA + DCT</span>
+    </div>
+    <div class="feat rev" style="transition-delay:.15s">
+      <div class="feat-icon">🎬</div>
+      <div class="feat-title">Video Module</div>
+      <div class="feat-desc">Frame-by-frame temporal analysis on MP4/AVI/MOV. Extracts up to 40 keyframes, scores each independently, and computes temporal motion consistency metrics.</div>
+      <span class="feat-badge">Temporal Analysis · Frame Scoring</span>
+    </div>
+    <div class="feat rev" style="transition-delay:.25s">
+      <div class="feat-icon">🎙</div>
+      <div class="feat-title">Voice Module</div>
+      <div class="feat-desc">MFCC kurtosis analysis, spectral flatness (Wiener entropy), F0 pitch consistency, breathing pattern detection, and high-frequency rolloff analysis to catch ElevenLabs-style cloning.</div>
+      <span class="feat-badge">MFCC + Spectral · F0 Pitch</span>
+    </div>
+  </div>
+</section>
+
+<!-- IMPACT -->
+<section id="impact">
+  <div class="impact-glow"></div>
+  <div class="impact-h rev">
+    <span class="big">₹50,000+</span>
+    <span>Average loss per family</span>
+    <span style="color:rgba(232,244,255,.4);font-size:.5em">stopped by early detection</span>
+  </div>
+  <p class="impact-sub rev">India ranked #1 globally for AI voice scam exposure. 47% of Indian adults targeted. DeepShield is the only free tool closing all four critical protection gaps.</p>
+</section>
+
+<!-- CTA -->
+<section id="cta">
+  <h2 class="cta-h rev">Fight <span class="free">fake</span><br>with <span class="free">free</span>.</h2>
+  <p class="cta-sub rev">Built in India, for India. A free AI shield for every citizen — no downloads, no sign-up, no cost. Ever.</p>
+  <div style="display:flex;gap:16px;justify-content:center" class="rev">
+    <button class="btn-p" style="font-size:12px;padding:16px 48px" onclick="document.getElementById('detect').scrollIntoView({behavior:'smooth'})">Start Detecting — Free</button>
+    <button class="btn-s" style="font-size:12px;padding:16px 48px">WhatsApp Bot ↗</button>
+  </div>
+  <div style="margin-top:80px;display:flex;justify-content:center;gap:80px;align-items:center" class="rev">
+    <div style="text-align:center"><div style="font-family:var(--fd);font-size:36px;color:rgba(0,255,229,.5);letter-spacing:4px">YESIST12</div><div style="font-family:var(--fm);font-size:9px;letter-spacing:2px;color:var(--dim);text-transform:uppercase">Innovation Track</div></div>
+    <div style="width:1px;height:40px;background:rgba(0,255,229,.1)"></div>
+    <div style="text-align:center"><div style="font-family:var(--fd);font-size:36px;color:rgba(0,255,229,.5);letter-spacing:4px">SDG 16</div><div style="font-family:var(--fm);font-size:9px;letter-spacing:2px;color:var(--dim);text-transform:uppercase">Peace & Justice</div></div>
+    <div style="width:1px;height:40px;background:rgba(0,255,229,.1)"></div>
+    <div style="text-align:center"><div style="font-family:var(--fd);font-size:36px;color:rgba(0,255,229,.5);letter-spacing:4px">iEXPLORE</div><div style="font-family:var(--fm);font-size:9px;letter-spacing:2px;color:var(--dim);text-transform:uppercase">Competition</div></div>
+  </div>
+</section>
+
+<footer>
+  <div class="foot-l">© 2025 DeepShield · Team Cardinals · YESIST12</div>
+  <div class="foot-c">DEEPSHIELD</div>
+  <div class="foot-r"><span>GitHub</span><span>Docs</span><span>WhatsApp</span></div>
+</footer>
+
+<script>
+// ── CURSOR
+const cur=document.getElementById('cur'),cur2=document.getElementById('cur2');
+let cx=0,cy=0,rx=300,ry=300;
+document.addEventListener('mousemove',e=>{cx=e.clientX;cy=e.clientY;cur.style.left=cx+'px';cur.style.top=cy+'px'});
+(function ac(){rx+=(cx-rx)*.1;ry+=(cy-ry)*.1;cur2.style.left=rx+'px';cur2.style.top=ry+'px';requestAnimationFrame(ac)})();
+document.querySelectorAll('button,a,.feat,.how-card').forEach(el=>{
+  el.addEventListener('mouseenter',()=>{cur2.style.transform='translate(-50%,-50%) scale(2)';cur2.style.borderColor='var(--cyan)'});
+  el.addEventListener('mouseleave',()=>{cur2.style.transform='translate(-50%,-50%) scale(1)'});
+});
+
+// ── BG CANVAS
+(function(){
+  const c=document.getElementById('bgc'),ctx=c.getContext('2d');
+  let W,H;
+  function resize(){W=c.width=innerWidth;H=c.height=innerHeight}
+  resize();window.addEventListener('resize',resize);
+  const pts=Array.from({length:70},()=>({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.3,vy:(Math.random()-.5)*.3,r:Math.random()*1.5+.3,o:Math.random()*.4+.1}));
+  let t=0;
+  function draw(){
+    ctx.clearRect(0,0,W,H);t+=.006;
+    // wave
+    for(let w=0;w<2;w++){
+      ctx.beginPath();
+      for(let x=0;x<=W;x+=5){const y=H*.8+Math.sin(x*.005+t+w)*30+Math.sin(x*.01+t*1.3)*15;x?ctx.lineTo(x,y):ctx.moveTo(x,y)}
+      ctx.strokeStyle=`rgba(0,255,229,${.04-.015*w})`;ctx.lineWidth=1;ctx.stroke();
+    }
+    // particles + connections
+    pts.forEach((p,i)=>{
+      p.x+=p.vx;p.y+=p.vy;
+      if(p.x<0)p.x=W;if(p.x>W)p.x=0;if(p.y<0)p.y=H;if(p.y>H)p.y=0;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=`rgba(0,255,229,${p.o})`;ctx.fill();
+      for(let j=i+1;j<pts.length;j++){const dx=pts[j].x-p.x,dy=pts[j].y-p.y,d=Math.sqrt(dx*dx+dy*dy);if(d<120){ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(pts[j].x,pts[j].y);ctx.strokeStyle=`rgba(0,255,229,${.05*(1-d/120)})`;ctx.lineWidth=.5;ctx.stroke()}}
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ── NAV
+window.addEventListener('scroll',()=>document.getElementById('nav').classList.toggle('s',scrollY>50));
+
+// ── REVEAL
+const ro=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('v')})},{threshold:.1});
+document.querySelectorAll('.rev,.rev-r,.rev-l').forEach(el=>ro.observe(el));
+
+// ── TAB SWITCHING
+let currentTab='image';
+const icons={'image':'🖼','video':'🎬','audio':'🎙'};
+const subs={'image':'JPG · PNG · WEBP · BMP supported','video':'MP4 · AVI · MOV · WEBM supported','audio':'WAV · MP3 · OGG · M4A supported'};
+const accepts={'image':'image/*','video':'video/*','audio':'audio/*'};
+function switchTab(tab,el){
+  currentTab=tab;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('dzIcon').textContent=icons[tab];
+  document.getElementById('dzSub').textContent='Drag & drop or click to upload\n'+subs[tab];
+  document.getElementById('fileInput').accept=accepts[tab];
+  resetDetector();
+}
+
+// ── DRAG DROP
+function doDragOver(e){e.preventDefault();document.getElementById('dropzone').classList.add('drag')}
+function doDragLeave(e){document.getElementById('dropzone').classList.remove('drag')}
+function doDrop(e){e.preventDefault();document.getElementById('dropzone').classList.remove('drag');if(e.dataTransfer.files[0])handleFile(e.dataTransfer.files[0])}
+
+// ── FILE HANDLER
+function handleFile(file){
+  if(!file)return;
+  const dz=document.getElementById('dropzone');
+  const an=document.getElementById('analyzing');
+  const re=document.getElementById('results');
+  dz.style.display='none';an.style.display='block';re.style.display='none';
+  const endpoint=currentTab==='image'?'/api/analyze/image':currentTab==='video'?'/api/analyze/video':'/api/analyze/audio';
+  const steps=currentTab==='image'
+    ?['Loading image data','Running ELA analysis','Measuring noise consistency','DCT frequency scan','Face smoothness check','Color correlation','Computing verdict']
+    :currentTab==='video'
+    ?['Loading video stream','Extracting keyframes','Per-frame ELA analysis','Temporal motion analysis','Suspicious frame detection','Computing verdict']
+    :['Loading audio samples','Spectral flatness analysis','Pitch consistency check','Breathing pattern detection','MFCC kurtosis analysis','Computing verdict'];
+  runStepAnimation(steps, () => {
+    const form=new FormData();form.append('file',file);
+    fetch(endpoint,{method:'POST',body:form})
+      .then(r=>r.json())
+      .then(data=>{
+        an.style.display='none';re.style.display='block';
+        renderResults(data,currentTab);
+      })
+      .catch(err=>{
+        an.style.display='none';dz.style.display='block';
+        alert('Analysis failed: '+err.message);
+      });
+  });
+}
+
+function runStepAnimation(steps, callback){
+  const el=document.getElementById('asteps');
+  const txt=document.getElementById('atext');
+  el.innerHTML='';
+  let i=0;
+  const msgs=['INITIALIZING ANALYSIS...','LOADING ALGORITHMS...','PROCESSING...','FUSING SIGNALS...','COMPUTING VERDICT...'];
+  let mi=0;
+  const msgInt=setInterval(()=>{txt.textContent=msgs[mi%msgs.length];mi++},700);
+  const inter=setInterval(()=>{
+    if(i<steps.length){
+      const d=document.createElement('div');d.className='astep done';d.textContent=steps[i];el.appendChild(d);i++;el.scrollTop=el.scrollHeight;
+    } else {
+      clearInterval(inter);clearInterval(msgInt);txt.textContent='ANALYSIS COMPLETE';
+      setTimeout(callback,400);
+    }
+  },Math.max(200, 1800/steps.length));
+}
+
+// ── RENDER RESULTS
+function renderResults(data,type){
+  if(data.error){
+    document.getElementById('analyzing').style.display='none';
+    document.getElementById('dropzone').style.display='block';
+    alert('Error: '+data.error);return;
+  }
+  const prob=data.synthetic_probability||0;
+  const isFake=data.verdict==='SYNTHETIC';
+  // Verdict box
+  const vb=document.getElementById('verdictBox');
+  vb.className='verdict-box '+(isFake?'fake':'real');
+  document.getElementById('verdictText').textContent=isFake?'⚠ SYNTHETIC DETECTED':'✓ AUTHENTIC';
+  document.getElementById('verdictConf').innerHTML=`Confidence: <strong>${(data.confidence*100).toFixed(1)}%</strong> · Synthetic probability: <strong>${(prob*100).toFixed(1)}%</strong>`;
+  // Meter
+  document.getElementById('meterVal').textContent=(prob*100).toFixed(1)+'%';
+  const mf=document.getElementById('meterFill');
+  mf.className='meter-fill '+(isFake?'danger':'safe');
+  setTimeout(()=>mf.style.width=(prob*100)+'%',100);
+  // Signals
+  const sw=document.getElementById('signalsWrap');sw.innerHTML='';
+  const sigs=data.signals||[];
+  if(sigs.length){
+    sigs.forEach(s=>{
+      const hue=s.score>0.6?0:s.score>0.4?40:160;
+      sw.innerHTML+=`<div class="sig-row"><div class="sig-name">${s.name}</div><div class="sig-bar"><div class="sig-fill" style="width:0%;background:hsl(${hue},80%,55%)" data-w="${s.score*100}"></div></div><div class="sig-val">${(s.score*100).toFixed(0)}%</div></div>`;
+    });
+    setTimeout(()=>sw.querySelectorAll('.sig-fill').forEach(el=>el.style.width=el.dataset.w+'%'),150);
+  }
+  // Flags
+  const fw=document.getElementById('flagsWrap');fw.innerHTML='';
+  (data.flags||[]).forEach(f=>{
+    const isWarn=isFake&&f.indexOf('No definitive')===-1;
+    fw.innerHTML+=`<div class="flag ${isWarn?'warn':'ok'}">${isWarn?'⚠':' ✓'} ${f}</div>`;
+  });
+  // Frame chart (video)
+  const fc=document.getElementById('frameChart');
+  if(type==='video'&&data.frame_scores&&data.frame_scores.length>0){
+    fc.style.display='block';drawFrameChart(fc,data.frame_scores);
+  } else {fc.style.display='none';}
+  // Waveform (audio)
+  const wc=document.getElementById('waveCanvas');
+  if(type==='audio'&&data.waveform){
+    wc.style.display='block';drawWaveform(wc,data.waveform,isFake);
+  } else {wc.style.display='none';}
+  // Meta chips
+  const mr=document.getElementById('metaRow');mr.innerHTML='';
+  const chips=[];
+  if(data.resolution)chips.push('📐 '+data.resolution);
+  if(data.duration)chips.push('⏱ '+data.duration+'s');
+  if(data.fps)chips.push('🎞 '+data.fps+' fps');
+  if(data.total_frames)chips.push('🖼 '+data.total_frames+' frames');
+  if(data.suspicious_frames!==undefined)chips.push('⚠ '+data.suspicious_frames+' suspicious frames');
+  if(data.sample_rate)chips.push('🎵 '+data.sample_rate+' Hz');
+  chips.push('⚡ '+data.processing_time+'s');
+  chips.forEach(c=>{mr.innerHTML+=`<div class="meta-chip">${c}</div>`});
+}
+
+function drawFrameChart(canvas,frames){
+  const ctx=canvas.getContext('2d');
+  const W=canvas.offsetWidth,H=80;
+  canvas.width=W;canvas.height=H;
+  ctx.clearRect(0,0,W,H);
+  // Threshold line
+  ctx.setLineDash([4,4]);ctx.strokeStyle='rgba(255,45,85,.3)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(0,H*.5);ctx.lineTo(W,H*.5);ctx.stroke();ctx.setLineDash([]);
+  // Area fill
+  const grad=ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,'rgba(0,255,229,.3)');grad.addColorStop(1,'rgba(0,255,229,.02)');
+  ctx.beginPath();ctx.moveTo(0,H);
+  frames.forEach((f,i)=>{const x=i/(frames.length-1)*W,y=H-(f.score*H*.9+H*.05);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});
+  ctx.lineTo(W,H);ctx.closePath();ctx.fillStyle=grad;ctx.fill();
+  // Line
+  ctx.beginPath();ctx.strokeStyle='var(--cyan)';ctx.lineWidth=1.5;
+  frames.forEach((f,i)=>{const x=i/(frames.length-1)*W,y=H-(f.score*H*.9+H*.05);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});
+  ctx.stroke();
+  // Labels
+  ctx.font='9px JetBrains Mono,monospace';ctx.fillStyle='rgba(42,74,106,.8)';
+  ctx.fillText('FRAME ANALYSIS',4,10);
+  ctx.fillText('SYNTHETIC THRESHOLD',4,H/2-3);
+}
+
+function drawWaveform(canvas,samples,isFake){
+  const W=canvas.offsetWidth,H=60;
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+  const mid=H/2;
+  ctx.strokeStyle=isFake?'rgba(255,45,85,.7)':'rgba(0,255,229,.7)';
+  ctx.lineWidth=1;ctx.beginPath();
+  samples.forEach((v,i)=>{const x=i/samples.length*W,y=mid+v*mid*.9;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});
+  ctx.stroke();
+  ctx.font='9px JetBrains Mono,monospace';ctx.fillStyle='rgba(42,74,106,.8)';
+  ctx.fillText('WAVEFORM ANALYSIS',4,10);
+}
+
+function resetDetector(){
+  document.getElementById('dropzone').style.display='block';
+  document.getElementById('analyzing').style.display='none';
+  document.getElementById('results').style.display='none';
+  document.getElementById('fileInput').value='';
+}
+
+// ── PARALLAX
+window.addEventListener('scroll',()=>{
+  const el=document.querySelector('.hero-bg');
+  if(el)el.style.transform=`translateX(-3%) translateY(calc(-50% + ${scrollY*.3}px))`;
+});
+</script>
+</body>
+</html>
