@@ -133,10 +133,19 @@ with tab2:
 
         os.unlink(tmp_path)
 
+# ── TAB 3 — VOICE  (replace existing tab3 block in app.py) ──────────────────
 with tab3:
     st.header("Voice Deepfake Detector")
     st.write("Upload an audio clip to detect AI-cloned or synthetic voices.")
-    st.info("📁 Use **WAV files** for best results — MP3/M4A require ffmpeg (not installed). Record a WAV with the command in the project README.")
+
+    # Show whether ML model is loaded
+    from pathlib import Path
+    if Path("voice_model.pkl").exists():
+        st.success("🧠 ML model loaded — high accuracy mode active")
+    else:
+        st.warning("⚠️ ML model not trained yet. Run `python train_voice_model.py` for best accuracy. Currently using rule-based detection only.")
+
+    st.info("📁 Use **WAV files** — MP3/M4A require ffmpeg (not installed)")
 
     uploaded_audio = st.file_uploader(
         "Choose an audio file...",
@@ -157,70 +166,76 @@ with tab3:
             result = detect_voice(tmp_path)
 
         if "error" in result:
-            st.error(f"❌ Error: {result['error']}")
-
+            st.error(f"❌ {result['error']}")
         else:
-            score  = result["score"]
-            label  = result["label"]
+            score = result["score"]
+            label = result["label"]
 
-            # ── Verdict banner ──────────────────────────────
+            # ── Verdict ──────────────────────────────────────────
             if label == "SYNTHETIC":
                 st.error("🤖 AI VOICE DETECTED")
             else:
                 st.success("✅ VOICE APPEARS AUTHENTIC")
 
-            # ── Top metrics ─────────────────────────────────
-            col1, col2, col3, col4 = st.columns(4)
-            if label == "SYNTHETIC":
-                col1.metric("Synthetic probability", f"{int(score * 100)}%")
-            else:
-                col1.metric("Authenticity score", f"{result['confidence']}%")
-            col2.metric("Duration",       f"{result['duration']}s")
-            col3.metric("Anomalies found", f"{result['rule_hits']} / {result['total_checks']}")
-            col4.metric("Sample rate",    f"{result['sample_rate']} Hz")
-
             st.progress(score)
 
-            # ── Weighted signal breakdown ────────────────────
-            st.subheader("Signal-by-signal analysis")
-            st.caption("Each signal has a weight reflecting how reliably it indicates AI voice.")
+            # ── Metrics ───────────────────────────────────────────
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric(
+                "Synthetic score" if label == "SYNTHETIC" else "Authenticity",
+                f"{int(score * 100)}%" if label == "SYNTHETIC" else f"{result['confidence']}%"
+            )
+            col2.metric("Duration",        f"{result['duration']}s")
+            col3.metric("Anomalies found", f"{result['rule_hits']} / {result['total_checks']}")
+            col4.metric("Sample rate",     f"{result['sample_rate']} Hz")
 
-            SIGNAL_LABELS = {
+            # ── Score breakdown ───────────────────────────────────
+            if result.get("model_trained", False):
+                st.subheader("Score breakdown")
+                bc1, bc2, bc3 = st.columns(3)
+                bc1.metric("ML model score",  f"{int(result['ml_score'] * 100)}%",
+                           help="Random Forest + Gradient Boosting ensemble")
+                bc2.metric("Rule-based score", f"{int(result['rule_score'] * 100)}%",
+                           help="7 weighted acoustic signal checks")
+                bc3.metric("Final (blended)",  f"{int(score * 100)}%",
+                           help="75% ML + 25% rules")
+                st.caption(f"Detection method: {result['detection_method']}")
+
+            # ── Signal table ──────────────────────────────────────
+            st.subheader("Signal analysis")
+            import pandas as pd
+            LABELS = {
                 "breathing":      "Breathing pattern",
                 "pitch_variance": "Pitch variation",
                 "formant":        "Formant dynamics",
                 "spectral_flat":  "Spectral texture",
-                "hf_energy":      "High-freq energy",
+                "hf_energy":      "High-freq energy (>8kHz)",
                 "silence_ratio":  "Silence pattern",
                 "zcr_regularity": "ZCR regularity",
             }
+            rows = [
+                {
+                    "Signal":       LABELS.get(k, k),
+                    "Result":       "⚠️ Suspicious" if v["triggered"] else "✅ Normal",
+                    "Weight":       f"{int(v['weight']*100)}%",
+                }
+                for k, v in result["signal_scores"].items()
+            ]
+            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
-            if "signal_scores" in result:
-                import pandas as pd
-                rows = []
-                for key, data in result["signal_scores"].items():
-                    rows.append({
-                        "Signal":    SIGNAL_LABELS.get(key, key),
-                        "Status":    "⚠️ Suspicious" if data["triggered"] else "✅ Normal",
-                        "Weight":    f"{int(data['weight'] * 100)}%",
-                        "Contribution": f"+{int(data['weight'] * 100)}%" if data["triggered"] else "—",
-                    })
-                df = pd.DataFrame(rows)
-                st.dataframe(df, use_container_width=True, hide_index=True)
+            # ── Findings ──────────────────────────────────────────
+            with st.expander("Detailed findings"):
+                for f in result["findings"]:
+                    st.write(f)
 
-            # ── Detailed findings ────────────────────────────
-            st.subheader("Detailed findings")
-            for finding in result["findings"]:
-                st.write(finding)
-
-            # ── Safety warning if synthetic ──────────────────
+            # ── Safety block ──────────────────────────────────────
             if label == "SYNTHETIC":
                 st.warning("""
 **If you received this as a call or voice note:**
 - 🚫 Do NOT share OTP, Aadhaar, or bank details
 - 📞 Hang up and call back on the **official number**
-- 🌐 Report to [cybercrime.gov.in](https://cybercrime.gov.in) or call **1930**
-- 👨‍👩‍👧 Alert your family members about this scam
+- 🌐 Report at [cybercrime.gov.in](https://cybercrime.gov.in) or call **1930**
+- 👨‍👩‍👧 Alert your family about this scam
                 """)
 
         os.unlink(tmp_path)
