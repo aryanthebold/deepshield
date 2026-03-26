@@ -136,17 +136,17 @@ with tab2:
 with tab3:
     st.header("Voice Deepfake Detector")
     st.write("Upload an audio clip to detect AI-cloned or synthetic voices.")
-
-    st.info("Supports MP3, WAV, M4A — minimum 3 seconds of audio")
+    st.info("📁 Use **WAV files** for best results — MP3/M4A require ffmpeg (not installed). Record a WAV with the command in the project README.")
 
     uploaded_audio = st.file_uploader(
-    "Choose an audio file...",
-    type=["wav", "mp3", "m4a", "ogg", "flac"],
-    key="audio_upload"
-)
+        "Choose an audio file...",
+        type=["wav", "mp3", "m4a", "ogg", "flac"],
+        key="audio_upload"
+    )
 
     if uploaded_audio is not None:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+        suffix = "." + uploaded_audio.name.split(".")[-1]
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
             tmp.write(uploaded_audio.getvalue())
             tmp_path = tmp.name
 
@@ -157,38 +157,71 @@ with tab3:
             result = detect_voice(tmp_path)
 
         if "error" in result:
-            st.error(f"Error: {result['error']}")
-        else:
-            score = result["score"]
-            label = result["label"]
+            st.error(f"❌ Error: {result['error']}")
 
+        else:
+            score  = result["score"]
+            label  = result["label"]
+
+            # ── Verdict banner ──────────────────────────────
             if label == "SYNTHETIC":
-                st.error("AI VOICE DETECTED")
-                st.metric("Synthetic probability", f"{int(score*100)}%")
+                st.error("🤖 AI VOICE DETECTED")
             else:
-                st.success("VOICE APPEARS AUTHENTIC")
-                st.metric("Authenticity score", f"{result['confidence']}%")
+                st.success("✅ VOICE APPEARS AUTHENTIC")
+
+            # ── Top metrics ─────────────────────────────────
+            col1, col2, col3, col4 = st.columns(4)
+            if label == "SYNTHETIC":
+                col1.metric("Synthetic probability", f"{int(score * 100)}%")
+            else:
+                col1.metric("Authenticity score", f"{result['confidence']}%")
+            col2.metric("Duration",       f"{result['duration']}s")
+            col3.metric("Anomalies found", f"{result['rule_hits']} / {result['total_checks']}")
+            col4.metric("Sample rate",    f"{result['sample_rate']} Hz")
 
             st.progress(score)
 
-            col1, col2 = st.columns(2)
-            col1.metric("Audio duration", f"{result['duration']}s")
-            col2.metric("Anomalies found", result["rule_hits"])
+            # ── Weighted signal breakdown ────────────────────
+            st.subheader("Signal-by-signal analysis")
+            st.caption("Each signal has a weight reflecting how reliably it indicates AI voice.")
 
-            st.subheader("Why did we flag this?")
+            SIGNAL_LABELS = {
+                "breathing":      "Breathing pattern",
+                "pitch_variance": "Pitch variation",
+                "formant":        "Formant dynamics",
+                "spectral_flat":  "Spectral texture",
+                "hf_energy":      "High-freq energy",
+                "silence_ratio":  "Silence pattern",
+                "zcr_regularity": "ZCR regularity",
+            }
+
+            if "signal_scores" in result:
+                import pandas as pd
+                rows = []
+                for key, data in result["signal_scores"].items():
+                    rows.append({
+                        "Signal":    SIGNAL_LABELS.get(key, key),
+                        "Status":    "⚠️ Suspicious" if data["triggered"] else "✅ Normal",
+                        "Weight":    f"{int(data['weight'] * 100)}%",
+                        "Contribution": f"+{int(data['weight'] * 100)}%" if data["triggered"] else "—",
+                    })
+                df = pd.DataFrame(rows)
+                st.dataframe(df, use_container_width=True, hide_index=True)
+
+            # ── Detailed findings ────────────────────────────
+            st.subheader("Detailed findings")
             for finding in result["findings"]:
-                if "No specific" in finding:
-                    st.write(f"✅ {finding}")
-                else:
-                    st.write(f"⚠️ {finding}")
+                st.write(finding)
 
-            st.subheader("What to do if you received this call?")
-            st.warning("""
-            1. Do NOT share OTP, Aadhaar, or bank details
-            2. Hang up and call back on the official number
-            3. Report to cybercrime.gov.in or call 1930
-            4. Alert your family members
-            """)
+            # ── Safety warning if synthetic ──────────────────
+            if label == "SYNTHETIC":
+                st.warning("""
+**If you received this as a call or voice note:**
+- 🚫 Do NOT share OTP, Aadhaar, or bank details
+- 📞 Hang up and call back on the **official number**
+- 🌐 Report to [cybercrime.gov.in](https://cybercrime.gov.in) or call **1930**
+- 👨‍👩‍👧 Alert your family members about this scam
+                """)
 
         os.unlink(tmp_path)
 
