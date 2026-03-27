@@ -40,7 +40,7 @@ with tab1:
         # Show the uploaded image
         col1, col2 = st.columns(2)
         with col1:
-            st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
+            st.image(uploaded_file, caption="Uploaded Image", use_container_width=True)
 
         with col2:
             with st.spinner("Analyzing image..."):
@@ -66,12 +66,21 @@ with tab1:
 
                 # Explainability
                 st.subheader("Why did we flag this?")
-                for finding in result["findings"]:
-                    if "No specific" in finding:
-                        st.write(f"✅ {finding}")
-                    else:
-                        st.write(f"⚠️ {finding}")
+                findings = result.get("findings", [])
+                
+                # Check if the text implies no anomalies, but the AI still flagged it
+                is_clean_findings = not findings or any("No specific" in f or "No anomalies" in f for f in findings)
 
+                if label == "SYNTHETIC" and is_clean_findings:
+                    st.warning("⚠️ High synthetic probability detected by the core AI model, even though local forensic rules missed it.")
+                elif is_clean_findings:
+                    st.success("✅ No anomalies detected.")
+                else:
+                    for finding in findings:
+                        if "No specific" in finding or "No anomalies" in finding:
+                            st.success(f"✅ {finding}")
+                        else:
+                            st.warning(f"⚠️ {finding}")
         # Cleanup
         os.unlink(tmp_path)
 
@@ -241,6 +250,76 @@ with tab3:
         os.unlink(tmp_path)
 
 with tab4:
-    st.header("WhatsApp Forward Checker")
-    st.write("Coming on Day 5 — send suspicious media to our WhatsApp bot")
-    st.info("Forward any suspicious image or voice note to our WhatsApp number for instant analysis.")
+    # --- Cinematic Header & Bilingual Subtitle ---
+    st.header("💬 WhatsApp Bot Integration")
+    st.markdown(
+        "<p style='font-family: \"Noto Sans Devanagari\", sans-serif; color: #a0a0a0; font-size: 1.1rem; margin-top: -15px;'>व्हाट्सएप बॉट एकीकरण</p>", 
+        unsafe_allow_html=True
+    )
+    
+    st.write("DeepShield works where 500 million Indians already are. No app downloads required — just forward suspicious media directly on WhatsApp for real-time analysis.")
+    st.divider()
+
+    col1, col2 = st.columns([1.2, 1])
+
+    with col1:
+        st.subheader("How to Use (Live Demo)")
+        st.markdown("""
+        **Step 1: Connect to the Sandbox**
+        Save our Twilio Sandbox number to your phone contacts as *DeepShield*.
+        
+        **Step 2: Activate the Session**
+        Send your Twilio join code (e.g., `join <your-sandbox-word>`) to the number to connect your phone to the local ngrok tunnel.
+        
+        **Step 3: Forward & Scan**
+        Forward any suspicious image, video, or voice note directly to the chat. DeepShield will process the media and reply within 30 seconds with a plain-language verdict.
+        """)
+        
+        # YESIST12 Pitch Framing
+        st.info("💡 **Impact:** This approach bypasses the barrier of enterprise tools, bringing AI forensics directly to rural populations and elderly users who are highly vulnerable to UPI and voice cloning scams.")
+
+    with col2:
+        # --- Custom CSS for the Glowing Number Box ---
+        st.markdown("""
+        <style>
+        .glow-box {
+            background-color: #080c10;
+            border: 2px solid #00e560;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 0 15px rgba(0, 229, 96, 0.2);
+            animation: pulse-border 2.5s infinite alternate;
+        }
+        @keyframes pulse-border {
+            from { box-shadow: 0 0 10px rgba(0, 229, 96, 0.1); border-color: rgba(0, 229, 96, 0.5); }
+            to { box-shadow: 0 0 25px rgba(0, 229, 96, 0.6); border-color: #00e560; }
+        }
+        .wa-number {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 26px;
+            color: #00e560;
+            font-weight: bold;
+            letter-spacing: 2px;
+            margin: 10px 0;
+        }
+        .wa-status {
+            display: inline-block;
+            background-color: rgba(0, 229, 96, 0.1);
+            color: #00e560;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        </style>
+        
+        <div class="glow-box">
+            <div class="wa-status">🟢 ONLINE (NGROK TUNNEL)</div>
+            <h3 style="color: white; margin-bottom: 0px;">DeepShield Bot</h3>
+            <p style="color: #a0a0a0; font-size: 14px;">Twilio Sandbox Number</p>
+            <p class="wa-number">+1 (415) 523-8886</p>
+            <p style="color: #a0a0a0; font-size: 14px; margin-top: 15px;">Send your <b>join</b> code to activate</p>
+        </div>
+        """, unsafe_allow_html=True)
