@@ -3,8 +3,8 @@ import cv2
 import numpy as np
 from PIL import Image
 
-API_USER = "385880270"      # ← paste your sightengine api_user here
-API_SECRET = "EeF4uhXTnHAFvnAsYQH77vwdfjPCbvrD"  # ← paste your sightengine api_secret here
+API_USER = "35928683"      # ← paste your sightengine api_user here
+API_SECRET = "fdj4q2SeYk4BTzEePKSqeaC4MjcLp3AN"  # ← paste your sightengine api_secret here
 
 def check_image_api(image_path):
     """Send image to Sightengine API for deepfake detection"""
@@ -20,6 +20,7 @@ def check_image_api(image_path):
                 }
             )
         result = response.json()
+        print("=== SIGHTENGINE RAW RESPONSE ===", result)
 
         if result.get('status') == 'success':
             fake_score = result.get('type', {}).get('deepfake', 0.5)
