@@ -2,10 +2,9 @@ import requests
 import cv2
 import numpy as np
 from PIL import Image
-
-API_USER = "35928683"      # ← paste your sightengine api_user here
-API_SECRET = "fdj4q2SeYk4BTzEePKSqeaC4MjcLp3AN"  # ← paste your sightengine api_secret here
-
+import streamlit as st
+API_USER = st.secrets["SIGHTENGINE_USER"]
+API_SECRET = st.secrets["SIGHTENGINE_SECRET"]
 def check_image_api(image_path):
     """Send image to Sightengine API for deepfake detection"""
     try:
