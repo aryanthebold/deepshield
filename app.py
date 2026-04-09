@@ -54,7 +54,7 @@ if st.query_params.get("page") == "dashboard":
             # Show the uploaded image
             col1, col2 = st.columns(2)
             with col1:
-                st.image(uploaded_file, caption="Uploaded Image", use_container_width=True)
+                st.image(uploaded_file, caption="Uploaded Image", width="stretch")
 
             with col2:
                 with st.spinner("Analyzing image..."):
@@ -244,7 +244,7 @@ if st.query_params.get("page") == "dashboard":
                     }
                     for k, v in result["signal_scores"].items()
                 ]
-                st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+                st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
 
                 # ── Findings ──────────────────────────────────────────
                 with st.expander("Detailed findings"):
