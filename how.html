@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeepShield — How It Works</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #020a12; --bg2: #040f1c; --teal: #00e5c8; --teal2: #00b3a0; --blue: #0066ff; --navy: #0a2040; --white: #f0f6ff; --muted: #4a6b8a; --card: rgba(10,32,64,0.5); --glass: rgba(0,229,200,0.04); }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--white); overflow-x: hidden; }
+  #bg-canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+  nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 20px 60px; display: flex; align-items: center; justify-content: space-between; backdrop-filter: blur(20px); background: rgba(2,10,18,0.7); border-bottom: 1px solid rgba(0,229,200,0.08); transition: all 0.4s ease; }
+  .nav-logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 22px; letter-spacing: -0.5px; display: flex; align-items: center; gap: 10px; color: var(--white); text-decoration: none; cursor: pointer; }
+  .logo-shield { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
+  .logo-shield svg { filter: drop-shadow(0 0 8px var(--teal)); }
+  .nav-links { display: flex; gap: 36px; list-style: none; }
+  .nav-links a { font-family: 'Space Mono', monospace; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); text-decoration: none; transition: color 0.3s; cursor: pointer; }
+  .nav-links a:hover, .nav-links a.active { color: var(--teal); }
+  .nav-cta { font-family: 'Space Mono', monospace; font-size: 12px; letter-spacing: 1px; padding: 10px 24px; border: 1px solid var(--teal); color: var(--teal); background: transparent; cursor: pointer; text-transform: uppercase; transition: all 0.3s; clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%); text-decoration: none; display: inline-flex; align-items: center; }
+  .nav-cta:hover { background: var(--teal); color: var(--bg); }
+  .grid-overlay { position: fixed; inset: 0; background-image: linear-gradient(rgba(0,229,200,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,200,0.02) 1px, transparent 1px); background-size: 60px 60px; pointer-events: none; z-index: 0; }
+  .cursor { position: fixed; width: 8px; height: 8px; background: var(--teal); border-radius: 50%; pointer-events: none; z-index: 9999; transition: transform 0.1s; mix-blend-mode: difference; }
+  .cursor-ring { position: fixed; width: 32px; height: 32px; border: 1px solid rgba(0,229,200,0.5); border-radius: 50%; pointer-events: none; z-index: 9999; transition: all 0.15s ease; transform: translate(-50%, -50%); }
+  .page-hero { position: relative; z-index: 1; padding: 160px 60px 80px; max-width: 1200px; margin: 0 auto; }
+  .page-eyebrow { font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--teal); display: flex; align-items: center; gap: 12px; margin-bottom: 24px; opacity: 0; transform: translateY(20px); animation: fadeUp 0.8s ease 0.2s forwards; }
+  .page-eyebrow::before { content: ''; width: 40px; height: 1px; background: var(--teal); opacity: 0.5; }
+  .page-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: clamp(48px, 7vw, 96px); line-height: 0.95; letter-spacing: -4px; opacity: 0; transform: translateY(30px); animation: fadeUp 0.9s ease 0.4s forwards; margin-bottom: 28px; }
+  .page-title em { font-style: normal; color: var(--teal); }
+  .page-lead { font-size: 18px; font-weight: 300; color: var(--muted); max-width: 640px; line-height: 1.8; opacity: 0; transform: translateY(20px); animation: fadeUp 0.8s ease 0.6s forwards; }
+  .page-lead strong { color: var(--white); }
+  .section { position: relative; z-index: 1; padding: 0 60px 100px; max-width: 1200px; margin: 0 auto; }
+  .section-label { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 4px; text-transform: uppercase; color: var(--teal); margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+  .section-label::before { content: ''; width: 24px; height: 1px; background: var(--teal); }
+  .section-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: clamp(32px, 4vw, 56px); line-height: 1; letter-spacing: -2px; margin-bottom: 48px; }
+  .section-title em { font-style: normal; color: var(--teal); }
+  .section-divider { position: relative; z-index: 1; height: 1px; background: linear-gradient(90deg, transparent, rgba(0,229,200,0.15), transparent); margin: 20px 60px 80px; }
+  .tilt-card { transition: transform 0.3s ease; transform-style: preserve-3d; }
+
+  /* MAIN PIPELINE */
+  .pipeline { position: relative; margin-bottom: 80px; }
+  .pipeline-line { position: absolute; left: 35px; top: 0; bottom: 0; width: 2px; background: linear-gradient(to bottom, var(--teal), var(--blue), rgba(0,229,200,0.1)); }
+  .pipe-step { display: flex; gap: 40px; align-items: flex-start; margin-bottom: 64px; position: relative; }
+  .pipe-num { width: 72px; height: 72px; flex-shrink: 0; background: var(--bg); border: 2px solid var(--teal); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px; color: var(--teal); position: relative; z-index: 1; transition: all 0.3s; box-shadow: 0 0 20px rgba(0,229,200,0.15); }
+  .pipe-num::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; border: 1px dashed rgba(0,229,200,0.3); animation: rotateDash 8s linear infinite; }
+  @keyframes rotateDash { to { transform: rotate(360deg); } }
+  .pipe-step:hover .pipe-num { background: var(--teal); color: var(--bg); box-shadow: 0 0 40px rgba(0,229,200,0.5); }
+  .pipe-body { flex: 1; padding-top: 12px; }
+  .pipe-tag { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 2px; color: rgba(0,229,200,0.6); margin-bottom: 8px; text-transform: uppercase; }
+  .pipe-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 26px; margin-bottom: 12px; }
+  .pipe-desc { font-size: 15px; color: var(--muted); line-height: 1.8; max-width: 640px; margin-bottom: 16px; }
+  .pipe-detail { background: var(--glass); border: 1px solid rgba(0,229,200,0.1); padding: 20px 24px; border-radius: 2px; font-size: 13px; color: var(--muted); line-height: 1.7; max-width: 640px; }
+  .pipe-detail code { font-family: 'Space Mono', monospace; color: var(--teal); font-size: 12px; }
+
+  /* SIGNAL TABLE */
+  .signal-table { width: 100%; border-collapse: collapse; margin-bottom: 80px; }
+  .signal-table th { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 2px; color: var(--teal); text-transform: uppercase; padding: 14px 20px; border-bottom: 1px solid rgba(0,229,200,0.15); text-align: left; }
+  .signal-table td { padding: 18px 20px; border-bottom: 1px solid rgba(0,229,200,0.06); font-size: 14px; color: var(--muted); vertical-align: top; }
+  .signal-table tr:hover td { background: rgba(0,229,200,0.02); color: var(--white); }
+  .signal-name { color: var(--white); font-weight: 500; }
+  .signal-badge { display: inline-block; font-family: 'Space Mono', monospace; font-size: 10px; padding: 3px 10px; border-radius: 20px; letter-spacing: 1px; }
+  .badge-voice { background: rgba(0,229,200,0.1); color: var(--teal); border: 1px solid rgba(0,229,200,0.2); }
+  .badge-image { background: rgba(0,102,255,0.1); color: #6699ff; border: 1px solid rgba(0,102,255,0.2); }
+  .badge-video { background: rgba(255,140,0,0.1); color: #ffaa44; border: 1px solid rgba(255,140,0,0.2); }
+  .weight-bar { display: flex; align-items: center; gap: 10px; }
+  .weight-fill { height: 4px; background: linear-gradient(90deg, var(--teal), var(--blue)); border-radius: 2px; }
+
+  /* TECH STACK */
+  .tech-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; margin-bottom: 80px; }
+  .tech-card { background: var(--card); border: 1px solid rgba(0,229,200,0.1); padding: 28px 24px; text-align: center; transition: all 0.3s; }
+  .tech-card:hover { background: rgba(0,229,200,0.05); border-color: rgba(0,229,200,0.3); }
+  .tech-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; margin-bottom: 8px; }
+  .tech-role { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+  .cta-section { position: relative; z-index: 1; text-align: center; padding: 100px 60px; overflow: hidden; }
+  .cta-bg { position: absolute; inset: 0; background: radial-gradient(ellipse 80% 60% at 50% 50%, rgba(0,229,200,0.07) 0%, transparent 70%); }
+  .cta-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: clamp(32px, 4vw, 60px); line-height: 1.05; letter-spacing: -2px; margin-bottom: 20px; position: relative; }
+  .cta-sub { font-size: 16px; color: var(--muted); max-width: 480px; margin: 0 auto 40px; line-height: 1.7; position: relative; }
+  .btn-primary { font-family: 'Space Mono', monospace; font-size: 13px; letter-spacing: 1px; padding: 16px 36px; background: var(--teal); color: var(--bg); border: none; cursor: pointer; text-transform: uppercase; font-weight: 700; clip-path: polygon(12px 0%, 100% 0%, calc(100% - 12px) 100%, 0% 100%); transition: all 0.3s; text-decoration: none; display: inline-flex; align-items: center; }
+  .btn-primary:hover { box-shadow: 0 0 40px rgba(0,229,200,0.5); }
+  .btn-secondary { font-family: 'Space Mono', monospace; font-size: 13px; letter-spacing: 1px; padding: 16px 36px; background: transparent; color: var(--white); border: 1px solid rgba(255,255,255,0.15); cursor: pointer; text-transform: uppercase; clip-path: polygon(12px 0%, 100% 0%, calc(100% - 12px) 100%, 0% 100%); transition: all 0.3s; text-decoration: none; display: inline-flex; align-items: center; }
+  .btn-secondary:hover { border-color: var(--teal); color: var(--teal); }
+  footer { position: relative; z-index: 1; border-top: 1px solid rgba(0,229,200,0.08); padding: 40px 60px; display: flex; align-items: center; justify-content: space-between; font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted); letter-spacing: 1px; }
+  .reveal { opacity: 0; transform: translateY(40px); transition: all 0.8s cubic-bezier(0.23, 1, 0.32, 1); }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+  @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+<div class="grid-overlay"></div>
+<canvas id="bg-canvas"></canvas>
+
+<nav id="navbar">
+  <a class="nav-logo" onclick="navigate('/?page=home'); return false;" href="#">
+    <div class="logo-shield">
+      <svg width="28" height="32" viewBox="0 0 28 32" fill="none">
+        <path d="M14 0L28 6V17C28 24.5 22 30.5 14 32C6 30.5 0 24.5 0 17V6L14 0Z" fill="rgba(0,229,200,0.15)" stroke="#00e5c8" stroke-width="1.5"/>
+        <path d="M8 16L12 20L20 12" stroke="#00e5c8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    DeepShield
+  </a>
+  <ul class="nav-links">
+    <li><a href="#" onclick="navigate('/?page=problem'); return false;">Problem</a></li>
+    <li><a href="#" onclick="navigate('/?page=solution'); return false;">Solution</a></li>
+    <li><a class="active" href="#" onclick="navigate('/?page=how'); return false;">How It Works</a></li>
+    <li><a href="#" onclick="navigate('/?page=compare'); return false;">Compare</a></li>
+  </ul>
+  <a href="#" onclick="navigate('/?page=dashboard'); return false;" class="nav-cta">Try Demo</a>
+</nav>
+
+<div class="page-hero">
+  <div class="page-eyebrow">Technical Deep-Dive</div>
+  <h1 class="page-title">From upload<br>to <em>verdict</em></h1>
+  <p class="page-lead">
+    A step-by-step look at how DeepShield's <strong>multi-modal forensic pipeline</strong> processes your media and arrives at a confidence-weighted verdict in under 30 seconds.
+  </p>
+</div>
+
+<!-- PIPELINE STEPS -->
+<div class="section">
+  <div class="section-label reveal">The Pipeline</div>
+  <h2 class="section-title reveal">Four steps to <em>the truth</em></h2>
+  <div class="pipeline reveal">
+    <div class="pipeline-line"></div>
+    <div class="pipe-step">
+      <div class="pipe-num">01</div>
+      <div class="pipe-body">
+        <div class="pipe-tag">Ingestion</div>
+        <div class="pipe-title">Upload & Pre-process</div>
+        <div class="pipe-desc">You upload media via the web dashboard, WhatsApp bot, or Telegram bot. DeepShield accepts JPG, PNG, WEBP, MP4, AVI, MOV, WAV, MP3, and OGG. Files are stored in a secure temporary buffer — never persisted to disk.</div>
+        <div class="pipe-detail">Media is validated, MIME-type checked, and if needed, converted to a normalised format. Audio files are resampled to <code>22050 Hz</code>. Video files are decoded with <code>OpenCV</code> to extract key frames at configurable intervals.</div>
+      </div>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-num">02</div>
+      <div class="pipe-body">
+        <div class="pipe-tag">Signal Extraction</div>
+        <div class="pipe-title">Multi-modal Feature Analysis</div>
+        <div class="pipe-desc">Depending on the media type, a different forensic pipeline runs. Each module extracts a purpose-built set of signals specifically designed to expose the artifacts left by AI generation tools.</div>
+        <div class="pipe-detail">
+          <strong style="color:var(--white);">Images:</strong> Sightengine API (AI face, wrist, quality scores) + local ELA + EXIF metadata check<br><br>
+          <strong style="color:var(--white);">Video:</strong> Frame sampling → per-frame image analysis → temporal consistency scoring → suspicious-frame flagging<br><br>
+          <strong style="color:var(--white);">Voice:</strong> <code>librosa</code> MFCC · pitch variance · spectral flatness · formant dynamics · breathing pattern · ZCR regularity · HF energy (>8kHz)
+        </div>
+      </div>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-num">03</div>
+      <div class="pipe-body">
+        <div class="pipe-tag">Score Fusion</div>
+        <div class="pipe-title">Weighted Confidence Fusion</div>
+        <div class="pipe-desc">Individual signal scores are fused using a weighted ensemble to produce a single synthetic probability score between 0 and 1. For voice detection, an ML ensemble (Random Forest + Gradient Boosting) is blended with rule-based scores.</div>
+        <div class="pipe-detail">
+          Voice blend: <code>75% ML model score + 25% rule-based score</code><br>
+          Image blend: <code>60% Sightengine API + 40% local forensic rules</code><br>
+          Video blend: <code>mean(frame_scores) + outlier_penalty × suspicious_frame_ratio</code><br><br>
+          If the ML model has not been trained yet, the system automatically falls back to pure rule-based detection with no loss of verdict quality for typical cases.
+        </div>
+      </div>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-num">04</div>
+      <div class="pipe-body">
+        <div class="pipe-tag">Verdict & Explanation</div>
+        <div class="pipe-title">Plain-Language Output</div>
+        <div class="pipe-desc">A threshold of <strong>0.5</strong> separates AUTHENTIC from SYNTHETIC verdicts. Every result includes the exact confidence score, which signals triggered, their individual weights, and a plain-language explanation in Hindi and English — designed for non-technical users.</div>
+        <div class="pipe-detail">For WhatsApp and Telegram, verdicts are formatted as concise text messages with emoji flags. For the web dashboard, users get a full breakdown including signal tables, frame-by-frame charts, and a safety advisory if synthetic content is detected.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section-divider"></div>
+
+<!-- SIGNAL TABLE -->
+<div class="section">
+  <div class="section-label reveal">Signal Reference</div>
+  <h2 class="section-title reveal">Every <em>signal</em> explained</h2>
+  <table class="signal-table reveal">
+    <thead>
+      <tr>
+        <th>Signal</th>
+        <th>Module</th>
+        <th>What It Detects</th>
+        <th>Weight</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class="signal-name">Breathing Pattern</td><td><span class="signal-badge badge-voice">Voice</span></td><td>AI voices omit natural inter-phoneme breathing. Absence signals synthesis.</td><td><div class="weight-bar"><div class="weight-fill" style="width:90px;"></div><span style="font-family:Space Mono;font-size:11px;color:var(--teal);">30%</span></div></td></tr>
+      <tr><td class="signal-name">Pitch Variance</td><td><span class="signal-badge badge-voice">Voice</span></td><td>Cloned voices have unnaturally low pitch variation — too consistent across phonemes.</td><td><div class="weight-bar"><div class="weight-fill" style="width:75px;"></div><span style="font-family:Space Mono;font-size:11px;color:var(--teal);">25%</span></div></td></tr>
+      <tr><td class="signal-name">Spectral Flatness</td><td><span class="signal-badge badge-voice">Voice</span></td><td>AI audio has high spectral flatness — lacks the tonal variation of natural human speech.</td><td><div class="weight-bar"><div class="weight-fill" style="width:45px;"></div><span style="font-family:Space Mono;font-size:11px;color:var(--teal);">15%</span></div></td></tr>
+      <tr><td class="signal-name">Formant Dynamics</td><td><span class="signal-badge badge-voice">Voice</span></td><td>Natural speech shows dynamic formant transitions between vowels. AI models flatten these.</td><td><div class="weight-bar"><div class="weight-fill" style="width:45px;"></div><span style="font-family:Space Mono;font-size:11px;color:var(--teal);">15%</span></div></td></tr>
+      <tr><td class="signal-name">GAN Artifact Score</td><td><span class="signal-badge badge-image">Image</span></td><td>GAN-generated faces leave characteristic pixel artifacts in hair, teeth, and background edges.</td><td><div class="weight-bar"><div class="weight-fill" style="width:90px;"></div><span style="font-family:Space Mono;font-size:11px;color:var(--teal);">Primary</span></div></td></tr>
+      <tr><td class="signal-name">EXIF Metadata</td><td><span class="signal-badge badge-image">Image</span></td><td>AI-generated images lack camera metadata — no GPS, no device model, no lens data.</td><td><div class="weight-bar"><div class="weight-fill" style="width:30px;"></div><span style="font-family:Space Mono;font-size:11px;color:var(--teal);">10%</span></div></td></tr>
+      <tr><td class="signal-name">Temporal Consistency</td><td><span class="signal-badge badge-video">Video</span></td><td>Face-swapped frames have inconsistent lighting and skin tone transitions across the video timeline.</td><td><div class="weight-bar"><div class="weight-fill" style="width:60px;"></div><span style="font-family:Space Mono;font-size:11px;color:var(--teal);">Aggregate</span></div></td></tr>
+      <tr><td class="signal-name">ZCR Regularity</td><td><span class="signal-badge badge-voice">Voice</span></td><td>Zero-crossing rate patterns in synthesised speech are too regular compared to human recordings.</td><td><div class="weight-bar"><div class="weight-fill" style="width:30px;"></div><span style="font-family:Space Mono;font-size:11px;color:var(--teal);">10%</span></div></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="section-divider"></div>
+
+<!-- TECH STACK -->
+<div class="section">
+  <div class="section-label reveal">Tech Stack</div>
+  <h2 class="section-title reveal">Built with <em>best-in-class</em> tools</h2>
+  <div class="tech-grid">
+    <div class="tech-card reveal"><div class="tech-name">Streamlit</div><div class="tech-role">Web dashboard framework — Python-native, real-time reactive UI</div></div>
+    <div class="tech-card reveal" style="transition-delay:0.1s"><div class="tech-name">Sightengine</div><div class="tech-role">Cloud AI API for image-level deepfake and GAN detection</div></div>
+    <div class="tech-card reveal" style="transition-delay:0.2s"><div class="tech-name">Librosa</div><div class="tech-role">Audio analysis library for MFCC, spectral, and pitch feature extraction</div></div>
+    <div class="tech-card reveal" style="transition-delay:0.3s"><div class="tech-name">OpenCV</div><div class="tech-role">Video decoding and frame-by-frame sampling pipeline</div></div>
+    <div class="tech-card reveal" style="transition-delay:0.4s"><div class="tech-name">Scikit-learn</div><div class="tech-role">Random Forest + Gradient Boosting ML ensemble for voice detection</div></div>
+    <div class="tech-card reveal" style="transition-delay:0.5s"><div class="tech-name">Twilio</div><div class="tech-role">WhatsApp Business API integration for bot-based media detection</div></div>
+    <div class="tech-card reveal" style="transition-delay:0.6s"><div class="tech-name">python-telegram-bot</div><div class="tech-role">Telegram Bot API wrapper for the @deepshield_bot integration</div></div>
+    <div class="tech-card reveal" style="transition-delay:0.7s"><div class="tech-name">ngrok</div><div class="tech-role">Tunnel for exposing the local Flask webhook to WhatsApp & Telegram</div></div>
+  </div>
+</div>
+
+<section class="cta-section">
+  <div class="cta-bg"></div>
+  <h2 class="cta-title reveal">Now you know how it works.<br><em style="color:var(--teal);font-style:normal">Try it yourself.</em></h2>
+  <p class="cta-sub reveal">Upload a file to the dashboard — see every signal, every score, and the final verdict in real time.</p>
+  <div style="display:flex;gap:16px;justify-content:center;position:relative;" class="reveal">
+    <a href="#" onclick="navigate('/?page=dashboard'); return false;" class="btn-primary" style="font-size:14px;padding:18px 48px;">Open Dashboard</a>
+    <a href="#" onclick="navigate('/?page=compare'); return false;" class="btn-secondary" style="font-size:14px;padding:18px 48px;">Compare vs. Others</a>
+  </div>
+</section>
+
+<footer>
+  <div>© 2025 DeepShield · Team Cardinals</div>
+  <div style="display:flex;gap:32px;"><span>Aryan Pratap Singh</span><span>github.com/aryanthebold</span></div>
+</footer>
+
+<script>
+function navigate(url){try{window.top.location.href=url;}catch(e){try{window.parent.location.href=url;}catch(e2){window.location.href=url;}}}
+const cursor=document.getElementById('cursor'),ring=document.getElementById('cursorRing');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cursor.style.left=mx-4+'px';cursor.style.top=my-4+'px';});
+function animRing(){rx+=(mx-rx)*0.12;ry+=(my-ry)*0.12;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(animRing);}
+animRing();
+document.querySelectorAll('button,a').forEach(el=>{el.addEventListener('mouseenter',()=>ring.style.transform='translate(-50%,-50%) scale(2)');el.addEventListener('mouseleave',()=>ring.style.transform='translate(-50%,-50%) scale(1)');});
+const canvas=document.getElementById('bg-canvas'),ctx=canvas.getContext('2d');
+canvas.width=window.innerWidth;canvas.height=window.innerHeight;
+const particles=[];for(let i=0;i<60;i++)particles.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,vx:(Math.random()-0.5)*0.4,vy:(Math.random()-0.5)*0.4,r:Math.random()*1.5+0.3,o:Math.random()*0.4+0.1});
+function drawParticles(){ctx.clearRect(0,0,canvas.width,canvas.height);particles.forEach((p,i)=>{p.x+=p.vx;p.y+=p.vy;if(p.x<0)p.x=canvas.width;if(p.x>canvas.width)p.x=0;if(p.y<0)p.y=canvas.height;if(p.y>canvas.height)p.y=0;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=`rgba(0,229,200,${p.o})`;ctx.fill();for(let j=i+1;j<particles.length;j++){const dx=particles[j].x-p.x,dy=particles[j].y-p.y,dist=Math.sqrt(dx*dx+dy*dy);if(dist<120){ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(particles[j].x,particles[j].y);ctx.strokeStyle=`rgba(0,229,200,${0.08*(1-dist/120)})`;ctx.stroke();}}});requestAnimationFrame(drawParticles);}
+drawParticles();
+window.addEventListener('resize',()=>{canvas.width=window.innerWidth;canvas.height=window.innerHeight;});
+const obs=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible');}),{threshold:0.1});
+document.querySelectorAll('.reveal').forEach(r=>obs.observe(r));
+window.addEventListener('scroll',()=>{const nav=document.getElementById('navbar');if(window.scrollY>50){nav.style.padding='14px 60px';nav.style.background='rgba(2,10,18,0.95)';}else{nav.style.padding='20px 60px';nav.style.background='rgba(2,10,18,0.7)';}});
+document.querySelectorAll('.reveal').forEach(el=>{const r=el.getBoundingClientRect();if(r.top<window.innerHeight)el.classList.add('visible');});
+</script>
+</body>
+</html>

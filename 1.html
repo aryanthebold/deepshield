@@ -853,7 +853,7 @@
 
 <!-- NAV -->
 <nav id="navbar">
-  <a href="#" class="nav-logo">
+  <a href="#" class="nav-logo" onclick="navigate('/'); return false;">
     <div class="logo-shield">
       <svg width="28" height="32" viewBox="0 0 28 32" fill="none">
         <path d="M14 0L28 6V17C28 24.5 22 30.5 14 32C6 30.5 0 24.5 0 17V6L14 0Z" fill="rgba(0,229,200,0.15)" stroke="#00e5c8" stroke-width="1.5"/>
@@ -863,12 +863,12 @@
     DeepShield
   </a>
   <ul class="nav-links">
-    <li><a href="#problem">Problem</a></li>
-    <li><a href="#solution">Solution</a></li>
-    <li><a href="#how">How It Works</a></li>
-    <li><a href="#compare">Compare</a></li>
+    <li><a href="#" onclick="navigate('/?page=problem'); return false;">Problem</a></li>
+    <li><a href="#" onclick="navigate('/?page=solution'); return false;">Solution</a></li>
+    <li><a href="#" onclick="navigate('/?page=how'); return false;">How It Works</a></li>
+    <li><a href="#" onclick="navigate('/?page=compare'); return false;">Compare</a></li>
   </ul>
-  <a href="/?page=dashboard" target="_parent" class="nav-cta" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">Try Demo</a>
+  <a href="#" onclick="navigate('/?page=dashboard'); return false;" class="nav-cta" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">Try Demo</a>
 </nav>
 
 <!-- HERO -->
@@ -882,7 +882,7 @@
     India's first <span>free, AI-powered</span> deepfake detection platform. Built to protect 500M+ citizens from fake voices, manipulated videos & synthetic faces.
   </p>
   <div class="hero-actions">
-    <a href="/?page=dashboard" target="_parent" class="btn-primary" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">Detect Now</a>
+    <a href="#" onclick="navigate('/?page=dashboard'); return false;" class="btn-primary" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">Detect Now</a>
     <button class="btn-secondary">Watch Demo</button>
   </div>
 
@@ -1089,7 +1089,7 @@
   <h2 class="cta-title reveal">Fight AI deception<br>with <em style="color:var(--teal);font-style:normal">AI detection</em></h2>
   <p class="cta-sub reveal">Built in India, for India — a free tool for every citizen to verify media before trusting or sharing it.</p>
   <div style="display:flex;gap:16px;justify-content:center;position:relative;" class="reveal">
-    <a href="/?page=dashboard" target="_parent" class="btn-primary" style="font-size:14px;padding:18px 48px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">Start Detection Free</a>
+    <a href="#" onclick="navigate('/?page=dashboard'); return false;" class="btn-primary" style="font-size:14px;padding:18px 48px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">Start Detection Free</a>
     <button class="btn-secondary" style="font-size:14px;padding:18px 48px">WhatsApp Bot</button>
   </div>
 </section>
@@ -1105,6 +1105,13 @@
 </footer>
 
 <script>
+// ─── NAVIGATE HELPER (works inside sandboxed srcdoc iframes) ───
+function navigate(url) {
+  try { window.top.location.href = url; } catch(e) {
+    try { window.parent.location.href = url; } catch(e2) { window.location.href = url; }
+  }
+}
+
 // ─── CUSTOM CURSOR ───
 const cursor = document.getElementById('cursor');
 const ring = document.getElementById('cursorRing');

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeepShield — Our Solution</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #020a12; --bg2: #040f1c; --teal: #00e5c8; --teal2: #00b3a0; --blue: #0066ff; --navy: #0a2040; --white: #f0f6ff; --muted: #4a6b8a; --card: rgba(10,32,64,0.5); --glass: rgba(0,229,200,0.04); --glow: 0 0 40px rgba(0,229,200,0.25); }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--white); overflow-x: hidden; }
+  #bg-canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+  nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 20px 60px; display: flex; align-items: center; justify-content: space-between; backdrop-filter: blur(20px); background: rgba(2,10,18,0.7); border-bottom: 1px solid rgba(0,229,200,0.08); transition: all 0.4s ease; }
+  .nav-logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 22px; letter-spacing: -0.5px; display: flex; align-items: center; gap: 10px; color: var(--white); text-decoration: none; cursor: pointer; }
+  .logo-shield { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
+  .logo-shield svg { filter: drop-shadow(0 0 8px var(--teal)); }
+  .nav-links { display: flex; gap: 36px; list-style: none; }
+  .nav-links a { font-family: 'Space Mono', monospace; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); text-decoration: none; transition: color 0.3s; cursor: pointer; }
+  .nav-links a:hover, .nav-links a.active { color: var(--teal); }
+  .nav-cta { font-family: 'Space Mono', monospace; font-size: 12px; letter-spacing: 1px; padding: 10px 24px; border: 1px solid var(--teal); color: var(--teal); background: transparent; cursor: pointer; text-transform: uppercase; transition: all 0.3s; clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%); text-decoration: none; display: inline-flex; align-items: center; }
+  .nav-cta:hover { background: var(--teal); color: var(--bg); }
+  .grid-overlay { position: fixed; inset: 0; background-image: linear-gradient(rgba(0,229,200,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,200,0.02) 1px, transparent 1px); background-size: 60px 60px; pointer-events: none; z-index: 0; }
+  .cursor { position: fixed; width: 8px; height: 8px; background: var(--teal); border-radius: 50%; pointer-events: none; z-index: 9999; transition: transform 0.1s; mix-blend-mode: difference; }
+  .cursor-ring { position: fixed; width: 32px; height: 32px; border: 1px solid rgba(0,229,200,0.5); border-radius: 50%; pointer-events: none; z-index: 9999; transition: all 0.15s ease; transform: translate(-50%, -50%); }
+  .page-hero { position: relative; z-index: 1; padding: 160px 60px 80px; max-width: 1200px; margin: 0 auto; }
+  .page-eyebrow { font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--teal); display: flex; align-items: center; gap: 12px; margin-bottom: 24px; opacity: 0; transform: translateY(20px); animation: fadeUp 0.8s ease 0.2s forwards; }
+  .page-eyebrow::before { content: ''; width: 40px; height: 1px; background: var(--teal); opacity: 0.5; }
+  .page-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: clamp(48px, 7vw, 96px); line-height: 0.95; letter-spacing: -4px; opacity: 0; transform: translateY(30px); animation: fadeUp 0.9s ease 0.4s forwards; margin-bottom: 28px; }
+  .page-title em { font-style: normal; color: var(--teal); }
+  .page-lead { font-size: 18px; font-weight: 300; color: var(--muted); max-width: 640px; line-height: 1.8; opacity: 0; transform: translateY(20px); animation: fadeUp 0.8s ease 0.6s forwards; }
+  .page-lead strong { color: var(--white); }
+  .section { position: relative; z-index: 1; padding: 0 60px 100px; max-width: 1200px; margin: 0 auto; }
+  .section-label { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 4px; text-transform: uppercase; color: var(--teal); margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+  .section-label::before { content: ''; width: 24px; height: 1px; background: var(--teal); }
+  .section-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: clamp(32px, 4vw, 56px); line-height: 1; letter-spacing: -2px; margin-bottom: 48px; }
+  .section-title em { font-style: normal; color: var(--teal); }
+  .section-divider { position: relative; z-index: 1; height: 1px; background: linear-gradient(90deg, transparent, rgba(0,229,200,0.15), transparent); margin: 20px 60px 80px; }
+  .tilt-card { transition: transform 0.3s ease; transform-style: preserve-3d; }
+
+  /* SOLUTION MODULE CARDS */
+  .module-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 80px; }
+  .module-card { background: var(--glass); border: 1px solid rgba(0,229,200,0.12); padding: 48px 36px; border-radius: 2px; position: relative; overflow: hidden; transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1); }
+  .module-card::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 50% 0%, rgba(0,229,200,0.08) 0%, transparent 70%); opacity: 0; transition: opacity 0.4s; }
+  .module-card:hover::after { opacity: 1; }
+  .module-card:hover { transform: translateY(-8px); border-color: rgba(0,229,200,0.4); box-shadow: 0 30px 60px rgba(0,0,0,0.5), 0 0 30px rgba(0,229,200,0.1); }
+  .module-icon { width: 64px; height: 64px; background: rgba(0,229,200,0.1); border: 1px solid rgba(0,229,200,0.3); display: flex; align-items: center; justify-content: center; margin-bottom: 28px; font-size: 28px; position: relative; z-index: 1; }
+  .module-num { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 2px; color: rgba(0,229,200,0.5); margin-bottom: 8px; position: relative; z-index: 1; text-transform: uppercase; }
+  .module-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 24px; margin-bottom: 16px; position: relative; z-index: 1; }
+  .module-desc { font-size: 14px; color: var(--muted); line-height: 1.8; position: relative; z-index: 1; margin-bottom: 20px; }
+  .module-tech { font-family: 'Space Mono', monospace; font-size: 10px; color: rgba(0,229,200,0.6); letter-spacing: 1px; position: relative; z-index: 1; line-height: 1.8; }
+  .module-acc { margin-top: 20px; font-family: 'Space Mono', monospace; font-size: 12px; color: var(--teal); letter-spacing: 1px; position: relative; z-index: 1; display: flex; align-items: center; gap: 8px; }
+  .module-acc::before { content: '↑'; }
+
+  /* FEATURE PILLARS */
+  .pillars-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin-bottom: 80px; }
+  .pillar { background: var(--card); border: 1px solid rgba(0,229,200,0.1); padding: 40px; transition: all 0.3s; position: relative; overflow: hidden; }
+  .pillar::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: linear-gradient(90deg, var(--teal), var(--blue)); transform: scaleX(0); transform-origin: left; transition: transform 0.4s; }
+  .pillar:hover::before { transform: scaleX(1); }
+  .pillar:hover { background: rgba(0,229,200,0.04); border-color: rgba(0,229,200,0.25); }
+  .pillar-icon { font-size: 32px; margin-bottom: 20px; }
+  .pillar-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 20px; margin-bottom: 12px; }
+  .pillar-desc { font-size: 14px; color: var(--muted); line-height: 1.7; }
+
+  /* PLATFORM DISTRIBUTION */
+  .platform-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 80px; }
+  .platform-card { background: var(--glass); border: 1px solid rgba(0,229,200,0.12); padding: 32px; border-radius: 2px; transition: all 0.3s; text-align: center; }
+  .platform-card:hover { border-color: rgba(0,229,200,0.4); background: rgba(0,229,200,0.04); }
+  .platform-icon { font-size: 40px; margin-bottom: 16px; }
+  .platform-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 18px; margin-bottom: 8px; }
+  .platform-desc { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+  /* CTA */
+  .cta-section { position: relative; z-index: 1; text-align: center; padding: 100px 60px; overflow: hidden; }
+  .cta-bg { position: absolute; inset: 0; background: radial-gradient(ellipse 80% 60% at 50% 50%, rgba(0,229,200,0.07) 0%, transparent 70%); }
+  .cta-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: clamp(32px, 4vw, 60px); line-height: 1.05; letter-spacing: -2px; margin-bottom: 20px; position: relative; }
+  .cta-sub { font-size: 16px; color: var(--muted); max-width: 480px; margin: 0 auto 40px; line-height: 1.7; position: relative; }
+  .btn-primary { font-family: 'Space Mono', monospace; font-size: 13px; letter-spacing: 1px; padding: 16px 36px; background: var(--teal); color: var(--bg); border: none; cursor: pointer; text-transform: uppercase; font-weight: 700; position: relative; overflow: hidden; clip-path: polygon(12px 0%, 100% 0%, calc(100% - 12px) 100%, 0% 100%); transition: all 0.3s; text-decoration: none; display: inline-flex; align-items: center; }
+  .btn-primary:hover { box-shadow: 0 0 40px rgba(0,229,200,0.5); }
+  .btn-secondary { font-family: 'Space Mono', monospace; font-size: 13px; letter-spacing: 1px; padding: 16px 36px; background: transparent; color: var(--white); border: 1px solid rgba(255,255,255,0.15); cursor: pointer; text-transform: uppercase; clip-path: polygon(12px 0%, 100% 0%, calc(100% - 12px) 100%, 0% 100%); transition: all 0.3s; text-decoration: none; display: inline-flex; align-items: center; }
+  .btn-secondary:hover { border-color: var(--teal); color: var(--teal); }
+  footer { position: relative; z-index: 1; border-top: 1px solid rgba(0,229,200,0.08); padding: 40px 60px; display: flex; align-items: center; justify-content: space-between; font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted); letter-spacing: 1px; }
+  .reveal { opacity: 0; transform: translateY(40px); transition: all 0.8s cubic-bezier(0.23, 1, 0.32, 1); }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+  @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+<div class="grid-overlay"></div>
+<canvas id="bg-canvas"></canvas>
+
+<nav id="navbar">
+  <a class="nav-logo" onclick="navigate('/?page=home'); return false;" href="#">
+    <div class="logo-shield">
+      <svg width="28" height="32" viewBox="0 0 28 32" fill="none">
+        <path d="M14 0L28 6V17C28 24.5 22 30.5 14 32C6 30.5 0 24.5 0 17V6L14 0Z" fill="rgba(0,229,200,0.15)" stroke="#00e5c8" stroke-width="1.5"/>
+        <path d="M8 16L12 20L20 12" stroke="#00e5c8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    DeepShield
+  </a>
+  <ul class="nav-links">
+    <li><a href="#" onclick="navigate('/?page=problem'); return false;">Problem</a></li>
+    <li><a class="active" href="#" onclick="navigate('/?page=solution'); return false;">Solution</a></li>
+    <li><a href="#" onclick="navigate('/?page=how'); return false;">How It Works</a></li>
+    <li><a href="#" onclick="navigate('/?page=compare'); return false;">Compare</a></li>
+  </ul>
+  <a href="#" onclick="navigate('/?page=dashboard'); return false;" class="nav-cta">Try Demo</a>
+</nav>
+
+<div class="page-hero">
+  <div class="page-eyebrow">Our Solution</div>
+  <h1 class="page-title">Three modules.<br>One <em>shield</em>.</h1>
+  <p class="page-lead">
+    DeepShield is India's first <strong>free, multi-modal AI forensics platform</strong> — detecting synthetic images, cloned voices, and manipulated videos in real-time. No technical knowledge needed.
+  </p>
+</div>
+
+<!-- THREE MODULES -->
+<div class="section">
+  <div class="section-label reveal">Detection Modules</div>
+  <h2 class="section-title reveal">Built around the <em>three attack surfaces</em></h2>
+  <div class="module-grid">
+    <div class="module-card reveal tilt-card">
+      <div class="module-icon">🖼</div>
+      <div class="module-num">Module 01</div>
+      <div class="module-title">Image Forensics</div>
+      <div class="module-desc">Upload any image — photo, screenshot, meme, or profile picture — and DeepShield runs it through Sightengine's AI API combined with local forensic rules to detect GAN artifacts, unnatural skin smoothing, metadata anomalies, and pixel-level inconsistencies.</div>
+      <div class="module-tech">TECH: Sightengine API · ELA Analysis · EXIF Forensics · GAN Artifact Detection</div>
+      <div class="module-acc">96% accuracy on AI-generated faces</div>
+    </div>
+    <div class="module-card reveal tilt-card" style="transition-delay:0.15s">
+      <div class="module-icon">🎬</div>
+      <div class="module-num">Module 02</div>
+      <div class="module-title">Video Analysis</div>
+      <div class="module-desc">Frame-by-frame temporal analysis on MP4, AVI, and MOV files. Our system samples key frames, runs each through the image module, then aggregates scores to surface a confidence metric and a suspicious-frames chart highlighting exact manipulation timestamps.</div>
+      <div class="module-tech">TECH: OpenCV Frame Sampling · Temporal Consistency Scoring · Anomaly Charting</div>
+      <div class="module-acc">Pinpoints exact manipulated frames</div>
+    </div>
+    <div class="module-card reveal tilt-card" style="transition-delay:0.3s">
+      <div class="module-icon">🎙</div>
+      <div class="module-num">Module 03</div>
+      <div class="module-title">Voice Detection</div>
+      <div class="module-desc">A 7-signal acoustic analysis pipeline — MFCC fingerprinting, pitch variance, spectral flatness, formant dynamics, breathing pattern detection, ZCR regularity, and high-frequency energy analysis — fused into a single authenticity verdict with plain-language explanation.</div>
+      <div class="module-tech">TECH: Librosa · MFCC · ML Ensemble (RF + GBM) · 7-Rule Forensic Pipeline</div>
+      <div class="module-acc">Detects ElevenLabs-style voice clones</div>
+    </div>
+  </div>
+</div>
+
+<div class="section-divider"></div>
+
+<!-- 4 CORE PILLARS -->
+<div class="section">
+  <div class="section-label reveal">Design Principles</div>
+  <h2 class="section-title reveal">Built on <em>four pillars</em></h2>
+  <div class="pillars-grid">
+    <div class="pillar reveal tilt-card">
+      <div class="pillar-icon">⚡</div>
+      <div class="pillar-title">Real-Time Detection</div>
+      <div class="pillar-desc">Results arrive in under 30 seconds — fast enough to verify suspicious media before you forward it, share it, or act on it. No waiting, no queues. Unlike enterprise tools that take minutes, DeepShield is built for instant verification.</div>
+    </div>
+    <div class="pillar reveal tilt-card" style="transition-delay:0.1s">
+      <div class="pillar-icon">🌐</div>
+      <div class="pillar-title">Zero Barrier Access</div>
+      <div class="pillar-desc">Works on any smartphone browser and through WhatsApp and Telegram — the two platforms 500M+ Indians already use daily. No app download, no account creation, no technical knowledge required. Just forward and scan.</div>
+    </div>
+    <div class="pillar reveal tilt-card" style="transition-delay:0.2s">
+      <div class="pillar-icon">🧠</div>
+      <div class="pillar-title">Explainable AI</div>
+      <div class="pillar-desc">Unlike black-box detectors, DeepShield tells you *why* it flagged something. Every verdict comes with a signal breakdown: which acoustic markers were abnormal, which visual artifacts triggered the alert, and a plain-language summary in Hindi and English.</div>
+    </div>
+    <div class="pillar reveal tilt-card" style="transition-delay:0.3s">
+      <div class="pillar-icon">🔒</div>
+      <div class="pillar-title">100% Free for Citizens</div>
+      <div class="pillar-desc">DeepShield is built for public good, not profit. The web platform, WhatsApp bot, and Telegram bot are all completely free. No paywalls, no premium tiers for citizens. Built under SDG 16 to enable peace, justice, and strong institutions.</div>
+    </div>
+  </div>
+</div>
+
+<div class="section-divider"></div>
+
+<!-- PLATFORM DISTRIBUTION -->
+<div class="section">
+  <div class="section-label reveal">Access Channels</div>
+  <h2 class="section-title reveal">Use it <em>anywhere</em> you are</h2>
+  <div class="platform-row">
+    <div class="platform-card reveal tilt-card">
+      <div class="platform-icon">🌐</div>
+      <div class="platform-name">Web Dashboard</div>
+      <div class="platform-desc">Full forensic workspace with drag-and-drop upload, detailed signal charts, frame-by-frame video breakdown, and downloadable reports. Best for journalists, researchers, and power users.</div>
+    </div>
+    <div class="platform-card reveal tilt-card" style="transition-delay:0.15s">
+      <div class="platform-icon">💬</div>
+      <div class="platform-name">WhatsApp Bot</div>
+      <div class="platform-desc">Forward any suspicious image, audio, or video directly to our Twilio-powered WhatsApp sandbox. Get a plain-language verdict in seconds — no app, no sign-in, works on any phone.</div>
+    </div>
+    <div class="platform-card reveal tilt-card" style="transition-delay:0.3s">
+      <div class="platform-icon">✈️</div>
+      <div class="platform-name">Telegram Bot</div>
+      <div class="platform-desc">Message @deepshield_bot on Telegram to run any media through the full detection pipeline. Perfect for communities, fact-checkers, and journalists who live in Telegram groups.</div>
+    </div>
+  </div>
+</div>
+
+<section class="cta-section">
+  <div class="cta-bg"></div>
+  <h2 class="cta-title reveal">See it in action.<br><em style="color:var(--teal);font-style:normal">Try it free now.</em></h2>
+  <p class="cta-sub reveal">Upload your first image, video, or audio file and get a forensic verdict in under 30 seconds.</p>
+  <div style="display:flex;gap:16px;justify-content:center;position:relative;" class="reveal">
+    <a href="#" onclick="navigate('/?page=dashboard'); return false;" class="btn-primary" style="font-size:14px;padding:18px 48px;">Open Dashboard</a>
+    <a href="#" onclick="navigate('/?page=how'); return false;" class="btn-secondary" style="font-size:14px;padding:18px 48px;">How It Works</a>
+  </div>
+</section>
+
+<footer>
+  <div>© 2025 DeepShield · Team Cardinals</div>
+  <div style="display:flex;gap:32px;"><span>Aryan Pratap Singh</span><span>github.com/aryanthebold</span></div>
+</footer>
+
+<script>
+function navigate(url) { try { window.top.location.href = url; } catch(e) { try { window.parent.location.href = url; } catch(e2) { window.location.href = url; } } }
+const cursor = document.getElementById('cursor'); const ring = document.getElementById('cursorRing');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove', e => { mx=e.clientX; my=e.clientY; cursor.style.left=mx-4+'px'; cursor.style.top=my-4+'px'; });
+function animRing(){rx+=(mx-rx)*0.12;ry+=(my-ry)*0.12;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(animRing);}
+animRing();
+document.querySelectorAll('button,a,.module-card,.pillar,.platform-card').forEach(el=>{el.addEventListener('mouseenter',()=>ring.style.transform='translate(-50%,-50%) scale(2)');el.addEventListener('mouseleave',()=>ring.style.transform='translate(-50%,-50%) scale(1)');});
+const canvas=document.getElementById('bg-canvas'),ctx=canvas.getContext('2d');
+canvas.width=window.innerWidth;canvas.height=window.innerHeight;
+const particles=[];for(let i=0;i<60;i++)particles.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,vx:(Math.random()-0.5)*0.4,vy:(Math.random()-0.5)*0.4,r:Math.random()*1.5+0.3,o:Math.random()*0.4+0.1});
+function drawParticles(){ctx.clearRect(0,0,canvas.width,canvas.height);particles.forEach((p,i)=>{p.x+=p.vx;p.y+=p.vy;if(p.x<0)p.x=canvas.width;if(p.x>canvas.width)p.x=0;if(p.y<0)p.y=canvas.height;if(p.y>canvas.height)p.y=0;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=`rgba(0,229,200,${p.o})`;ctx.fill();for(let j=i+1;j<particles.length;j++){const dx=particles[j].x-p.x,dy=particles[j].y-p.y,dist=Math.sqrt(dx*dx+dy*dy);if(dist<120){ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(particles[j].x,particles[j].y);ctx.strokeStyle=`rgba(0,229,200,${0.08*(1-dist/120)})`;ctx.stroke();}}});requestAnimationFrame(drawParticles);}
+drawParticles();
+window.addEventListener('resize',()=>{canvas.width=window.innerWidth;canvas.height=window.innerHeight;});
+const obs=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible');}),{threshold:0.12});
+document.querySelectorAll('.reveal').forEach(r=>obs.observe(r));
+document.querySelectorAll('.tilt-card').forEach(card=>{card.addEventListener('mousemove',e=>{const rect=card.getBoundingClientRect();const x=(e.clientX-rect.left)/rect.width-0.5;const y=(e.clientY-rect.top)/rect.height-0.5;card.style.transform=`perspective(800px) rotateY(${x*12}deg) rotateX(${-y*12}deg) translateZ(10px)`;});card.addEventListener('mouseleave',()=>{card.style.transform='';});});
+window.addEventListener('scroll',()=>{const nav=document.getElementById('navbar');if(window.scrollY>50){nav.style.padding='14px 60px';nav.style.background='rgba(2,10,18,0.95)';}else{nav.style.padding='20px 60px';nav.style.background='rgba(2,10,18,0.7)';}});
+document.querySelectorAll('.reveal').forEach(el=>{const r=el.getBoundingClientRect();if(r.top<window.innerHeight)el.classList.add('visible');});
+</script>
+</body>
+</html>
